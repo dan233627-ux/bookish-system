@@ -32,61 +32,191 @@ import DailyOfferModal, { DAILY_OFFER_PLAN } from './components/DailyOfferModal'
 import Profiles from './components/Profiles';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
+import { supabase } from './utils/supabase/client';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'landing' | 'auth' | 'dashboard'>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<{ username: string; walletAddress: string } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'plans' | 'profiles' | 'community' | 'support'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'plans' | 'profiles' | 'community' | 'support' | 'calculator'>('dashboard');
   const [selectedPlan, setSelectedPlan] = useState<InvestmentPlan | null>(null);
   const [activeInvestments, setActiveInvestments] = useState<ActiveInvestment[]>([]);
   const [totalClaimedEarnings, setTotalClaimedEarnings] = useState<number>(0);
   const [showDailyOffer, setShowDailyOffer] = useState<boolean>(false);
 
-  // Load persistent session, investments & earnings from localStorage
+  
+  // Listen to hash change for navigation
   useEffect(() => {
-    const session = localStorage.getItem('royal_session');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session);
-        setCurrentUser(parsed);
-        setIsAuthenticated(true);
-        setCurrentPage('dashboard');
-      } catch (e) {
-        console.error('Failed to parse saved session', e);
+    const handleHash = () => {
+      const hash = window.location.hash;
+      if (hash === '#calculator') {
+        setActiveTab('calculator');
+      } else if (hash === '#plans') {
+        setActiveTab('plans');
+      } else if (hash === '#profiles') {
+        setActiveTab('profiles');
+      } else if (hash === '#community') {
+        setActiveTab('community');
+      } else if (hash === '#support') {
+        setActiveTab('support');
+      } else if (hash === '#dashboard' || hash === '') {
+        setActiveTab('dashboard');
       }
+    };
+
+    window.addEventListener('hashchange', handleHash);
+    handleHash(); // initial check
+
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  // Load investments from Supabase
+  const loadUserInvestments = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('investments')
+        .select('*')
+        .eq('user_id', userId)
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const mapped = data.map((inv: any) => ({
+          id: inv.id,
+          planId: inv.plan_id,
+          planLabel: inv.plan_label,
+          category: inv.category,
+          capital: Number(inv.capital),
+          roi: Number(inv.roi),
+          startDate: inv.start_date,
+          endDate: inv.end_date,
+          durationHours: inv.duration_hours,
+          progress: 0,
+          currentEarning: Number(inv.capital),
+          status: inv.status
+        }));
+        
+        // Sum claimed earnings dynamically
+        const claimedSum = mapped
+          .filter(inv => inv.status === 'claimed')
+          .reduce((sum, inv) => sum + inv.roi, 0);
+        
+        setTotalClaimedEarnings(claimedSum);
+        setActiveInvestments(mapped);
+      }
+    } catch (e) {
+      console.error('Failed to load investments from Supabase', e);
+    }
+  };
+
+  // Auto-login or self-healing demo registration for alan.turing@univ-scam-demo.com
+  const autoLoginDemoUser = async () => {
+    const demoEmail = 'alan.turing@univ-scam-demo.com';
+    const demoPassword = 'admin123';
+    
+    const loggedOut = localStorage.getItem('royal_logged_out');
+    if (loggedOut === 'true') {
+      setCurrentPage('landing');
+      return;
     }
 
-    const savedInvestments = localStorage.getItem('royal_investments');
-    const savedEarnings = localStorage.getItem('royal_claimed_earnings');
-    
-    if (savedInvestments) {
-      try {
-        setActiveInvestments(JSON.parse(savedInvestments));
-      } catch (e) {
-        console.error('Failed to parse saved investments', e);
+    try {
+      let { data, error } = await supabase.auth.signInWithPassword({
+        email: demoEmail,
+        password: demoPassword,
+      });
+
+      if (error) {
+        const signupRes = await supabase.auth.signUp({
+          email: demoEmail,
+          password: demoPassword,
+        });
+        
+        if (signupRes.data?.user) {
+          data = signupRes.data;
+          
+          await supabase.from('profiles').upsert({
+            id: signupRes.data.user.id,
+            username: demoEmail,
+            wallet_address: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d',
+            rank: 'Gold',
+            join_date: '2026-07-01T00:00:00Z',
+            trust_score: 94,
+            base_invested: 15000,
+            base_earnings: 82500,
+            base_withdrawn: 45000,
+            base_completed: 18,
+          }, { onConflict: 'id' });
+        }
       }
+
+      if (data?.user) {
+        setCurrentUser({ username: demoEmail, walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d' });
+        setIsAuthenticated(true);
+        setCurrentPage('dashboard');
+        await loadUserInvestments(data.user.id);
+      } else {
+        setCurrentPage('landing');
+      }
+    } catch (e) {
+      console.error('Demo auto-login failed', e);
+      setCurrentPage('landing');
     }
-    
-    if (savedEarnings) {
-      setTotalClaimedEarnings(Number(savedEarnings));
-    }
+  };
+
+  // Load persistent session and investments from Supabase
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        const email = session.user.email || '';
+        setCurrentUser({ username: email, walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d' });
+        setIsAuthenticated(true);
+        setCurrentPage('dashboard');
+        loadUserInvestments(session.user.id);
+      } else {
+        autoLoginDemoUser();
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        const email = session.user.email || '';
+        setCurrentUser({ username: email, walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d' });
+        setIsAuthenticated(true);
+        setCurrentPage('dashboard');
+        loadUserInvestments(session.user.id);
+      } else {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleAuthSuccess = (username: string, walletAddress: string) => {
-    const session = { username, walletAddress };
-    localStorage.setItem('royal_session', JSON.stringify(session));
-    setCurrentUser(session);
+    localStorage.removeItem('royal_logged_out');
+    setCurrentUser({ username, walletAddress });
     setIsAuthenticated(true);
     setCurrentPage('dashboard');
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        loadUserInvestments(user.id);
+      }
+    });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('royal_session');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.setItem('royal_logged_out', 'true');
     setCurrentUser(null);
     setIsAuthenticated(false);
     setCurrentPage('landing');
+    setActiveInvestments([]);
+    setTotalClaimedEarnings(0);
   };
 
   const handleAccessTerminal = () => {
@@ -97,41 +227,71 @@ export default function App() {
     }
   };
 
-  // Save changes to localStorage
-  const saveInvestments = (updated: ActiveInvestment[]) => {
-    setActiveInvestments(updated);
-    localStorage.setItem('royal_investments', JSON.stringify(updated));
-  };
-
   // Handle confirmed simulated deposit
-  const handleConfirmDeposit = (
+  const handleConfirmDeposit = async (
     username: string, 
     plan: InvestmentPlan, 
     screenshotBase64?: string | null, 
     paymentMethod?: string
   ) => {
-    const now = new Date();
-    // Calculate simulated end time
-    const end = new Date(now.getTime() + plan.durationHours * 60 * 60 * 1000);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    const newInvestment: ActiveInvestment = {
-      id: `inv-${Date.now()}`,
-      planId: plan.id,
-      planLabel: plan.categoryLabel,
+    const now = new Date();
+    let durationSeconds = 120; // 2 minutes
+    if (plan.category === '2day') {
+      durationSeconds = 240; // 4 minutes
+    } else if (plan.category === 'weekly') {
+      durationSeconds = 600; // 10 minutes
+    }
+    const end = new Date(now.getTime() + durationSeconds * 1000);
+
+    const newDbInvestment = {
+      user_id: user.id,
+      plan_id: plan.id,
+      plan_label: plan.categoryLabel,
       category: plan.category,
       capital: plan.capital,
       roi: plan.roi,
-      startDate: now.toISOString(),
-      endDate: end.toISOString(),
-      durationHours: plan.durationHours,
-      progress: 0,
-      currentEarning: plan.capital,
-      status: 'active'
+      start_date: now.toISOString(),
+      end_date: end.toISOString(),
+      duration_hours: plan.durationHours,
+      status: 'active',
+      screenshot_url: screenshotBase64 || null,
+      payment_method: paymentMethod || 'Crypto'
     };
 
-    const updated = [newInvestment, ...activeInvestments];
-    saveInvestments(updated);
-    setActiveTab('dashboard');
+    try {
+      const { data, error } = await supabase
+        .from('investments')
+        .insert(newDbInvestment)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const mappedNew: ActiveInvestment = {
+          id: data.id,
+          planId: data.plan_id,
+          planLabel: data.plan_label,
+          category: data.category,
+          capital: Number(data.capital),
+          roi: Number(data.roi),
+          startDate: data.start_date,
+          endDate: data.end_date,
+          durationHours: data.duration_hours,
+          progress: 0,
+          currentEarning: Number(data.capital),
+          status: data.status
+        };
+
+        setActiveInvestments(prev => [mappedNew, ...prev]);
+        setActiveTab('dashboard');
+      }
+    } catch (e) {
+      console.error('Failed to create investment in Supabase', e);
+    }
 
     // Dispatch direct notification & screenshot to user's configured Telegram Bot
     fetch('/api/notify-deposit', {
@@ -157,23 +317,35 @@ export default function App() {
   };
 
   // Handle simulated withdrawal payout claim
-  const handleClaimPayout = (id: string) => {
-    const matched = activeInvestments.find(inv => inv.id === id);
-    if (!matched) return;
+  const handleClaimPayout = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('investments')
+        .update({ status: 'claimed' })
+        .eq('id', id)
+        .select()
+        .single();
 
-    // Add to claimed earnings
-    const updatedEarnings = totalClaimedEarnings + matched.roi;
-    setTotalClaimedEarnings(updatedEarnings);
-    localStorage.setItem('royal_claimed_earnings', updatedEarnings.toString());
+      if (error) throw error;
 
-    // Update investment status to claimed
-    const updated = activeInvestments.map(inv => {
-      if (inv.id === id) {
-        return { ...inv, status: 'claimed' as const, progress: 100, currentEarning: matched.roi };
+      if (data) {
+        const updated = activeInvestments.map(inv => {
+          if (inv.id === id) {
+            return { ...inv, status: 'claimed' as const, progress: 100, currentEarning: Number(data.roi) };
+          }
+          return inv;
+        });
+        setActiveInvestments(updated);
+        
+        const claimedSum = updated
+          .filter(inv => inv.status === 'claimed')
+          .reduce((sum, inv) => sum + inv.roi, 0);
+        
+        setTotalClaimedEarnings(claimedSum);
       }
-      return inv;
-    });
-    saveInvestments(updated);
+    } catch (e) {
+      console.error('Failed to claim payout in Supabase', e);
+    }
   };
 
   // Group plans by category for easy display
@@ -464,9 +636,78 @@ export default function App() {
                 {/* Live community feeds Column */}
                 <div className="space-y-6">
                   <LiveFeed />
-                  <RoiCalculator onSelectPlan={setSelectedPlan} />
+                  
+                  {/* ROI Simulation Summary Card */}
+                  <div className="rounded-2xl border border-amber-500/10 bg-[#121318]/60 p-6 backdrop-blur-md text-left">
+                    <div className="flex items-center gap-3 border-b border-amber-500/10 pb-4">
+                      <div className="rounded-lg bg-amber-500/10 p-2 text-amber-400 border border-amber-500/10">
+                        <Activity className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-display text-sm font-bold text-white uppercase tracking-wider">ROYAL POOL SIMULATOR</h3>
+                        <p className="text-[10px] text-gray-400">Model algorithmic leverage returns</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-4">
+                      <p className="text-xs text-gray-400 leading-relaxed">
+                        Simulate institutional HFT yield strategies. Drag to scale your capital from <span className="text-white font-semibold">�500 to �10,000</span> and instantly generate simulated compounding equity growth curves.
+                      </p>
+                      
+                      <div className="rounded-lg bg-[#16171d] p-3.5 border border-amber-500/5 flex items-center justify-between">
+                        <div>
+                          <span className="block text-[9px] font-mono text-gray-500 uppercase">Est. Profit Potential</span>
+                          <span className="text-sm font-bold text-emerald-400 font-mono">+740% Profit Ratio</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="block text-[9px] font-mono text-gray-500 uppercase">Maturity Options</span>
+                          <span className="text-xs font-semibold text-white">24h / 2 Days / Weekly</span>
+                        </div>
+                      </div>
+
+                      <button
+                        id="btn-redirect-calculator"
+                        onClick={() => {
+                          window.location.hash = 'calculator';
+                          setActiveTab('calculator');
+                        }}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#d4af37] py-3 text-xs font-extrabold uppercase tracking-widest text-[#0c0d12] hover:brightness-110 cursor-pointer shadow-md shadow-amber-500/10 transition-all duration-300"
+                      >
+                        <span>SIMULATE ROI</span>
+                        <ArrowUpRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          
+          {activeTab === 'calculator' && (
+            <motion.div
+              key="calculator-view"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6 text-left"
+              id="calculator-view-stage"
+            >
+              <div className="rounded-2xl border border-amber-500/15 bg-gradient-to-b from-[#121318] to-[#0d0e12] p-6 md:p-8 relative overflow-hidden">
+                <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 h-64 w-64 rounded-full bg-amber-500/5 blur-3xl pointer-events-none"></div>
+                
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#d4af37] font-mono block">
+                  Interactive Simulator
+                </span>
+                <h2 className="font-display text-2xl font-bold text-white mt-1.5 uppercase">
+                  ROYAL POOL ROI CALCULATOR
+                </h2>
+                <p className="mt-2 text-sm text-gray-400 max-w-2xl leading-relaxed">
+                  Select your capital scale, duration cycle, and immediately analyze simulated compounding equity curves for premium high-frequency trading arbitrage pools.
+                </p>
+              </div>
+
+              <RoiCalculator onSelectPlan={setSelectedPlan} />
             </motion.div>
           )}
 
@@ -551,7 +792,13 @@ export default function App() {
               transition={{ duration: 0.4 }}
               id="profiles-view-stage"
             >
-              <Profiles currentUser={currentUser} onLogout={handleLogout} />
+              <Profiles 
+                currentUser={currentUser} 
+                onLogout={handleLogout} 
+                activeInvestments={activeInvestments}
+                totalClaimedEarnings={totalClaimedEarnings}
+                setActiveTab={setActiveTab}
+              />
             </motion.div>
           )}
 

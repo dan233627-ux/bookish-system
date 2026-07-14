@@ -94,7 +94,7 @@ export default function PlanCard({ plan, onSelect }: PlanCardProps) {
               : 'bg-[#181920] border border-amber-500/20 text-[#d4af37] hover:bg-[#d4af37] hover:text-[#0c0d12] hover:border-[#d4af37]'
           }`}
         >
-          <span>Allocate Capital</span>
+          <span>Select Package</span>
           <ArrowUpRight className="h-4 w-4" />
         </button>
       </div>

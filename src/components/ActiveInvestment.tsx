@@ -10,69 +10,50 @@ interface ActiveInvestmentProps {
 }
 
 export default function ActiveInvestment({ investment, onClaim }: ActiveInvestmentProps) {
-  const [currentProgress, setCurrentProgress] = useState(investment.progress);
-  const [currentEarning, setCurrentEarning] = useState(investment.currentEarning);
+  const [currentProgress, setCurrentProgress] = useState(0);
+  const [currentEarning, setCurrentEarning] = useState(investment.capital);
   const [timeRemaining, setTimeRemaining] = useState('');
 
-  // Calculate simulated rate of tick increase per second
-  // For standard simulation, we tick up progress and earnings so they can see immediate action!
   useEffect(() => {
-    // We want the simulation to feel extremely active, so we increase progress and earnings slightly faster
-    // or simulate real-time hourly rates. Let's make it tick up progress by 0.05% per second to simulate rapid growth,
-    // and scale earnings accordingly so the user gets to see completions during their preview!
-    const totalProfitRange = investment.roi - investment.capital;
+    const updateProgress = () => {
+      const nowTime = Date.now();
+      const startTime = new Date(investment.startDate).getTime();
+      const endTime = new Date(investment.endDate).getTime();
+      const totalMs = endTime - startTime;
+      const elapsedMs = nowTime - startTime;
 
-    const interval = setInterval(() => {
-      setCurrentProgress(prevProgress => {
-        if (prevProgress >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
+      let nextProgress = 0;
+      if (totalMs > 0) {
+        nextProgress = Math.min((elapsedMs / totalMs) * 100, 100);
+      }
+      if (nextProgress < 0) nextProgress = 0;
+      setCurrentProgress(nextProgress);
 
-        const step = 0.08; // speed of simulation progress tick
-        const nextProgress = Math.min(prevProgress + step, 100);
-        
-        // Calculate current earnings based on progress
-        const earned = investment.capital + (totalProfitRange * (nextProgress / 100));
-        setCurrentEarning(earned);
+      const totalProfitRange = investment.roi - investment.capital;
+      const earned = investment.capital + (totalProfitRange * (nextProgress / 100));
+      setCurrentEarning(earned);
 
-        return nextProgress;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [investment]);
-
-  // Handle ticking clock representation
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const end = new Date(investment.endDate);
-      const diffMs = end.getTime() - now.getTime();
-
-      // Since we simulate rapid progress in the UI, let's also mock the countdown clock to scale with progress!
-      // This keeps the countdown synchronized with the progress bar.
-      const simulatedHoursLeft = (investment.durationHours * (100 - currentProgress)) / 100;
-      
-      if (simulatedHoursLeft <= 0 || currentProgress >= 100) {
+      // Remaining Time Countdown
+      const diffMs = endTime - nowTime;
+      if (diffMs <= 0 || nextProgress >= 100) {
         setTimeRemaining('00:00:00 (Ready to Claim)');
         return;
       }
 
-      const hours = Math.floor(simulatedHoursLeft);
-      const minutesDecimal = (simulatedHoursLeft - hours) * 60;
-      const minutes = Math.floor(minutesDecimal);
-      const seconds = Math.floor((minutesDecimal - minutes) * 60);
+      const totalSecs = Math.floor(diffMs / 1000);
+      const hours = Math.floor(totalSecs / 3600);
+      const minutes = Math.floor((totalSecs % 3600) / 60);
+      const seconds = totalSecs % 60;
 
       const pad = (n: number) => n.toString().padStart(2, '0');
       setTimeRemaining(`${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`);
     };
 
-    updateClock();
-    const clockInterval = setInterval(updateClock, 1000);
+    updateProgress();
+    const interval = setInterval(updateProgress, 1000);
 
-    return () => clearInterval(clockInterval);
-  }, [currentProgress, investment]);
+    return () => clearInterval(interval);
+  }, [investment]);
 
   const isCompleted = currentProgress >= 100;
 

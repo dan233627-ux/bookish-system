@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Crown, Lock, User, Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react';
+import { supabase } from '../utils/supabase/client';
 
 interface AuthPageProps {
   onAuthSuccess: (username: string, walletAddress: string) => void;
@@ -9,8 +10,8 @@ interface AuthPageProps {
 
 export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPageProps) {
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState(() => localStorage.getItem('saved_username') || 'alan.turing@univ-scam-demo.com');
+  const [password, setPassword] = useState(() => localStorage.getItem('saved_password') || 'admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -21,12 +22,12 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
     return /^0x[a-fA-F0-9]{40}$/.test(address);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!username.trim()) {
-      setError('Please provide a valid username.');
+      setError('Please provide a valid username or email.');
       return;
     }
 
@@ -35,48 +36,114 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
       return;
     }
 
-
-
     setLoading(true);
 
-    // Simulate elite cryptographically secured authorization pipeline
+    // Simulated cryptographic progress message queue
     const messages = activeTab === 'signup'
-      ? ['Opening escrow nodes...', 'Establishing key shares...', 'Synchronizing ledger address...', 'Terminal initialized successfully!']
-      : ['Decrypting access token...', 'Authenticating signature...', 'Verifying shield reserve logs...', 'Terminal gate open!'];
+      ? ['Opening escrow nodes...', 'Establishing key shares...', 'Verifying database connection...', 'Terminal initialized successfully!']
+      : ['Decrypting access token...', 'Authenticating signature...', 'Verifying ledger credentials...', 'Terminal gate open!'];
 
     let messageIndex = 0;
     setLoadingMessage(messages[0]);
 
-    const interval = setInterval(() => {
+    const messageInterval = setInterval(() => {
       messageIndex++;
       if (messageIndex < messages.length) {
         setLoadingMessage(messages[messageIndex]);
-      } else {
-        clearInterval(interval);
-        setLoading(false);
+      }
+    }, 250);
 
-        // Store user in simulated database (localStorage)
-        if (activeTab === 'signup') {
-          const registeredUsers = JSON.parse(localStorage.getItem('royal_users') || '{}');
-          registeredUsers[username.toLowerCase()] = { username, password, walletAddress: '' };
-          localStorage.setItem('royal_users', JSON.stringify(registeredUsers));
+    let email = username.trim();
+    if (!email.includes('@')) {
+      email = `${email}@univ-scam-demo.com`;
+    }
 
-          onAuthSuccess(username, '');
-        } else {
-          const registeredUsers = JSON.parse(localStorage.getItem('royal_users') || '{}');
-          const matchedUser = registeredUsers[username.toLowerCase()];
-          
-          if (matchedUser && matchedUser.password === password) {
-            onAuthSuccess(matchedUser.username, matchedUser.walletAddress);
-          } else if (username.toLowerCase() === 'admin' && password === 'admin123') {
-            // Default demo admin account
-            onAuthSuccess('SovereignAdmin', '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d');
-          } else {
-            setError('Access Denied. Invalid credentials or unregistered account.');
+    try {
+      if (activeTab === 'signup') {
+        // 1. Supabase Auth Sign Up
+        const { data, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (authError) {
+          clearInterval(messageInterval);
+          setError(authError.message);
+          setLoading(false);
+          return;
+        }
+
+        if (data?.user) {
+          // 2. Insert row in profiles table
+          const { error: profileError } = await supabase.from('profiles').insert({
+            id: data.user.id,
+            username: email,
+            wallet_address: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d', // Default demo EVM wallet
+            rank: 'Bronze',
+            trust_score: 94,
+            base_invested: 0,
+            base_earnings: 0,
+            base_withdrawn: 0,
+            base_completed: 0,
+            join_date: new Date().toISOString()
+          });
+
+          if (profileError) {
+            console.error('Failed to create profile:', profileError);
           }
+          // Save credentials locally for auto-fill on next visit
+          localStorage.setItem('saved_username', username);
+          localStorage.setItem('saved_password', password);
+
+          clearInterval(messageInterval);
+          setLoading(false);
+          onAuthSuccess(email, '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d');
+        }
+      } else {
+        // Supabase Auth Sign In
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (authError) {
+          // Fallback to local admin credentials just in case database connection fails or for local tests
+          if (username.toLowerCase() === 'admin' && password === 'admin123') {
+            localStorage.setItem('saved_username', username);
+            localStorage.setItem('saved_password', password);
+            clearInterval(messageInterval);
+            setLoading(false);
+            onAuthSuccess('SovereignAdmin', '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d');
+            return;
+          }
+          clearInterval(messageInterval);
+          setError(authError.message);
+          setLoading(false);
+          return;
+        }
+
+        if (data?.user) {
+          // Fetch user's profile information from database
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('wallet_address')
+            .eq('id', data.user.id)
+            .single();
+
+          // Save credentials locally for auto-fill on next visit
+          localStorage.setItem('saved_username', username);
+          localStorage.setItem('saved_password', password);
+
+          clearInterval(messageInterval);
+          setLoading(false);
+          onAuthSuccess(email, profile?.wallet_address || '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d');
         }
       }
-    }, 800);
+    } catch (err: any) {
+      clearInterval(messageInterval);
+      setError(err.message || 'An unexpected error occurred during authorization.');
+      setLoading(false);
+    }
   };
 
   return (
