@@ -1,0 +1,6 @@
+{
+  "name": "Forex Royal Community",
+  "description": "Premium investment dashboard and community platform featuring active 24-hour, 2-day, and weekly pool trading plans with a luxurious gold and black theme.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
