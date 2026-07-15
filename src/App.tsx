@@ -357,7 +357,8 @@ export default function App() {
     }
 
     // Dispatch direct notification & screenshot to user's configured Telegram Bot
-    fetch('/api/notify-deposit', {
+    const notifyUrl = '/api/notify-deposit';
+    fetch(notifyUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -372,15 +373,19 @@ export default function App() {
     })
       .then(async (res) => {
         const text = await res.text();
+        if (!res.ok) {
+          console.warn('[Telegram Alert System] notification route unavailable or returned error:', res.status, text);
+          return;
+        }
         try {
           const data = JSON.parse(text);
-          console.log('[Telegram Alert System]', data.message);
+          console.log('[Telegram Alert System]', data.message ?? data.error ?? 'No message returned');
         } catch {
           console.warn('[Telegram Alert System] response is not JSON:', text);
         }
       })
       .catch((err) => {
-        console.error('[Telegram Alert Error]', err);
+        console.warn('[Telegram Alert Error] Unable to reach notification service:', err);
       });
   };
 
