@@ -20,7 +20,8 @@ export interface ActiveInvestment {
   durationHours: number;
   progress: number; // 0 to 100
   currentEarning: number;
-  status: 'active' | 'completed' | 'claimed';
+  netPayout?: number;
+  status: 'pending' | 'active' | 'completed' | 'claimed';
 }
 
 export interface Transaction {

@@ -28,6 +28,7 @@ interface LandingPageProps {
 export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: LandingPageProps) {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [calcPlanIndex, setCalcPlanIndex] = useState(0);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const currentPlan = INVESTMENT_PLANS[calcPlanIndex];
   
   // Stats auto-counter simulation
@@ -68,32 +69,32 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
       {/* Landing Sticky Header */}
       <header className="sticky top-0 z-50 bg-[#08080a]/80 border-b border-amber-500/10 backdrop-blur-lg">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-600 via-yellow-400 to-amber-600 shadow-md shadow-amber-500/10">
-                <Crown className="h-5.5 w-5.5 text-[#0d0e12]" />
+          <div className="flex h-16 md:h-20 items-center justify-between gap-3">
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-600 via-yellow-400 to-amber-600 shadow-md shadow-amber-500/10">
+                <Crown className="h-5 w-5 text-[#0d0e12]" />
               </div>
               <div className="text-left">
-                <h1 className="font-display text-base font-black tracking-widest text-[#d4af37] leading-none">
+                <h1 className="font-display text-sm md:text-base font-black tracking-widest text-[#d4af37] leading-none">
                   FOREX ROYAL
                 </h1>
-                <span className="text-[8px] uppercase tracking-widest text-gray-400 font-mono block mt-1">
+                <span className="hidden sm:block text-[8px] uppercase tracking-widest text-gray-400 font-mono mt-0.5">
                   PRESTIGE INVESTMENT POOL
                 </span>
               </div>
             </div>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden md:flex items-center gap-6 lg:gap-8">
               <a href="#features" className="text-xs uppercase tracking-wider text-gray-400 hover:text-[#d4af37] transition-all">Features</a>
               <a href="#timeline" className="text-xs uppercase tracking-wider text-gray-400 hover:text-[#d4af37] transition-all">How It Works</a>
               <a href="#calculator" className="text-xs uppercase tracking-wider text-gray-400 hover:text-[#d4af37] transition-all">Calculator</a>
               <a href="#feed" className="text-xs uppercase tracking-wider text-gray-400 hover:text-[#d4af37] transition-all">Live Feed</a>
-              <a href="#faq" className="text-xs uppercase tracking-wider text-gray-400 hover:text-[#d4af37] transition-all">Support & FAQ</a>
+              <a href="#faq" className="text-xs uppercase tracking-wider text-gray-400 hover:text-[#d4af37] transition-all">FAQ</a>
             </nav>
 
-            {/* Access Terminal Button */}
-            <div className="flex items-center gap-4">
+            {/* Access Terminal Button + Mobile menu toggle */}
+            <div className="flex items-center gap-2 shrink-0">
               <button 
                 onClick={onNavigateToAuth}
                 className="hidden sm:inline-block text-xs uppercase tracking-wider text-gray-300 hover:text-white transition-all font-semibold"
@@ -102,18 +103,65 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
               </button>
               <button
                 onClick={onAccessTerminal}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 shadow-md shadow-amber-500/10 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-4 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 shadow-md shadow-amber-500/10 transition-all cursor-pointer min-h-[44px]"
               >
-                <span>Access Terminal</span>
-                <ArrowRight className="h-4 w-4" />
+                <span className="hidden sm:inline">Access Terminal</span>
+                <span className="sm:hidden">Access</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+              {/* Mobile hamburger for nav links */}
+              <button
+                onClick={() => setMobileNavOpen(prev => !prev)}
+                className="md:hidden flex items-center justify-center h-9 w-9 rounded-lg border border-amber-500/20 bg-amber-500/5 text-amber-400 cursor-pointer"
+                aria-label="Toggle menu"
+              >
+                {mobileNavOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
             </div>
           </div>
+
+          {/* Mobile Nav Dropdown */}
+          <AnimatePresence>
+            {mobileNavOpen && (
+              <motion.nav
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="md:hidden overflow-hidden border-t border-amber-500/10"
+              >
+                <div className="flex flex-col py-3 gap-1">
+                  {[
+                    { href: '#features', label: 'Features' },
+                    { href: '#timeline', label: 'How It Works' },
+                    { href: '#calculator', label: 'Calculator' },
+                    { href: '#feed', label: 'Live Feed' },
+                    { href: '#faq', label: 'FAQ' },
+                  ].map(link => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileNavOpen(false)}
+                      className="px-4 py-3 text-sm font-semibold text-gray-300 hover:text-[#d4af37] hover:bg-amber-500/5 rounded-lg transition-all"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                  <button
+                    onClick={() => { setMobileNavOpen(false); onNavigateToAuth(); }}
+                    className="mx-4 mt-2 py-3 rounded-xl border border-white/10 text-sm font-bold text-gray-300 hover:text-white transition-all"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              </motion.nav>
+            )}
+          </AnimatePresence>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-24 pb-20 border-b border-amber-500/5">
+      <section className="relative overflow-hidden pt-14 sm:pt-24 pb-12 sm:pb-20 border-b border-amber-500/5">
         {/* Glowing Background Radial Effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-r from-amber-500/[0.03] via-yellow-500/[0.01] to-amber-500/[0.03] blur-[150px] rounded-full pointer-events-none"></div>
         <div className="absolute -top-10 left-10 w-96 h-96 bg-amber-500/[0.02] rounded-full blur-3xl pointer-events-none"></div>
@@ -136,33 +184,33 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
             </p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-4">
             <button
               onClick={onAccessTerminal}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-8 py-4 text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 transition-all cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-8 py-4 text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 transition-all cursor-pointer min-h-[48px]"
             >
               <span>Get Started Now</span>
               <ArrowRight className="h-4 w-4" />
             </button>
             <a
               href="#calculator"
-              className="inline-flex items-center justify-center rounded-xl border border-white/10 hover:border-amber-500/30 bg-white/5 hover:bg-white/10 px-8 py-4 text-xs font-bold uppercase tracking-wider text-white transition-all"
+              className="inline-flex items-center justify-center rounded-xl border border-white/10 hover:border-amber-500/30 bg-white/5 hover:bg-white/10 px-8 py-4 text-xs font-bold uppercase tracking-wider text-white transition-all min-h-[48px]"
             >
               Simulate ROI
             </a>
           </div>
 
           {/* Stats Metrics Ticker */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto pt-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto pt-12 sm:pt-16">
             {[
               { label: "Total Volume Route", value: `£${liveVolume.toLocaleString()}`, highlight: true },
               { label: "Active Pool Contracts", value: "1,248" },
-              { label: "Shield Buffer Segregation", value: "£2.5M" },
-              { label: "System Live Uptime", value: "99.99%", success: true }
+              { label: "Shield Buffer", value: "£2.5M" },
+              { label: "System Uptime", value: "99.99%", success: true }
             ].map((stat, i) => (
-              <div key={i} className="rounded-2xl border border-amber-500/5 bg-[#121318]/40 p-5 backdrop-blur-md text-left flex flex-col justify-between">
-                <span className="text-[9px] font-mono text-gray-500 font-bold uppercase tracking-widest block mb-2">{stat.label}</span>
-                <span className={`text-lg sm:text-2xl font-black font-mono tracking-tight ${stat.highlight ? 'bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent' : stat.success ? 'text-emerald-400' : 'text-white'}`}>
+              <div key={i} className="rounded-xl border border-amber-500/5 bg-[#121318]/40 p-3 sm:p-5 backdrop-blur-md text-left flex flex-col justify-between min-w-0">
+                <span className="text-[8px] sm:text-[9px] font-mono text-gray-500 font-bold uppercase tracking-widest block mb-1 sm:mb-2 truncate">{stat.label}</span>
+                <span className={`text-base sm:text-lg md:text-2xl font-black font-mono tracking-tight ${stat.highlight ? 'bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent' : stat.success ? 'text-emerald-400' : 'text-white'}`}>
                   {stat.value}
                 </span>
               </div>
@@ -172,7 +220,7 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
       </section>
 
       {/* Highlights / Features Section */}
-      <section id="features" className="py-24 border-b border-amber-500/5 bg-[#0b0c10]/40 relative">
+      <section id="features" className="py-14 sm:py-24 border-b border-amber-500/5 bg-[#0b0c10]/40 relative">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16">
           <div className="text-center space-y-2">
             <span className="text-[10px] font-mono font-bold tracking-widest text-[#d4af37] uppercase bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
@@ -230,7 +278,7 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
       </section>
 
       {/* How It Works Diagram Section */}
-      <section id="timeline" className="py-24 border-b border-amber-500/5">
+      <section id="timeline" className="py-14 sm:py-24 border-b border-amber-500/5">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16">
           <div className="text-center space-y-2">
             <span className="text-[10px] font-mono font-bold tracking-widest text-[#d4af37] uppercase bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
@@ -267,7 +315,7 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
       </section>
 
       {/* Interactive Calculator Section */}
-      <section id="calculator" className="py-24 border-b border-amber-500/5 bg-[#0b0c10]/40">
+      <section id="calculator" className="py-14 sm:py-24 border-b border-amber-500/5 bg-[#0b0c10]/40">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16">
           <div className="text-center space-y-2">
             <span className="text-[10px] font-mono font-bold tracking-widest text-[#d4af37] uppercase bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
@@ -288,19 +336,19 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
                 <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[#d4af37] mb-3">
                   1. CHOOSE YIELD POOL CONTRACT TIER:
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {INVESTMENT_PLANS.map((plan, idx) => (
                     <button
                       key={plan.id}
                       onClick={() => setCalcPlanIndex(idx)}
-                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all min-h-[60px] ${
                         calcPlanIndex === idx
                           ? 'bg-amber-500/10 border-amber-400 text-white'
                           : 'bg-[#17181f] border-amber-500/5 hover:border-amber-500/20 text-gray-400'
                       }`}
                     >
                       <p className="text-xs font-bold uppercase tracking-wider font-mono">{plan.categoryLabel}</p>
-                      <span className="text-[10px] text-gray-500 font-mono mt-1 block">Tier: £{plan.capital}</span>
+                      <span className="text-[10px] text-gray-500 font-mono mt-1 block">£{plan.capital}</span>
                     </button>
                   ))}
                 </div>
@@ -361,7 +409,7 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
       </section>
 
       {/* Live Activity Section */}
-      <section id="feed" className="py-24 border-b border-amber-500/5">
+      <section id="feed" className="py-14 sm:py-24 border-b border-amber-500/5">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16">
           <div className="text-center space-y-2">
             <span className="text-[10px] font-mono font-bold tracking-widest text-[#d4af37] uppercase bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
@@ -382,7 +430,7 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
       </section>
 
       {/* Professional FAQ Section */}
-      <section id="faq" className="py-24 border-b border-amber-500/5 bg-[#0b0c10]/40">
+      <section id="faq" className="py-14 sm:py-24 border-b border-amber-500/5 bg-[#0b0c10]/40">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-16">
           <div className="text-center space-y-2">
             <span className="text-[10px] font-mono font-bold tracking-widest text-[#d4af37] uppercase bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">

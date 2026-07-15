@@ -8,13 +8,17 @@ import {
   ShieldCheck, 
   Wallet, 
   ArrowUpRight, 
-  HelpCircle,
   TrendingUp,
   Sparkles,
-  DollarSign,
   Lock,
   Activity,
-  Award
+  Award,
+  Calculator,
+  MoreHorizontal,
+  X,
+  Menu,
+  User,
+  ChevronRight
 } from 'lucide-react';
 
 import { InvestmentPlan, ActiveInvestment } from './types';
@@ -32,20 +36,42 @@ import DailyOfferModal, { DAILY_OFFER_PLAN } from './components/DailyOfferModal'
 import Profiles from './components/Profiles';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
+import PurchaseConfirmation from './components/PurchaseConfirmation';
 import { supabase } from './utils/supabase/client';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'landing' | 'auth' | 'dashboard'>('landing');
+  const [currentPage, setCurrentPage] = useState<'landing' | 'auth' | 'dashboard' | 'confirmation'>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<{ username: string; walletAddress: string } | null>(null);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'plans' | 'profiles' | 'community' | 'support' | 'calculator'>('dashboard');
   const [selectedPlan, setSelectedPlan] = useState<InvestmentPlan | null>(null);
+  const [purchaseConfirmation, setPurchaseConfirmation] = useState<{
+    plan: InvestmentPlan;
+    paymentMethod: string;
+    username: string;
+  } | null>(null);
   const [activeInvestments, setActiveInvestments] = useState<ActiveInvestment[]>([]);
   const [totalClaimedEarnings, setTotalClaimedEarnings] = useState<number>(0);
   const [showDailyOffer, setShowDailyOffer] = useState<boolean>(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState<boolean>(false);
+  const [isLoadingInvestments, setIsLoadingInvestments] = useState<boolean>(false);
 
-  
+  const TRON_WITHDRAWAL_FEE_USD = 80;
+  const MANAGEMENT_FEE_RATE = 0.03;
+
+  const calculateManagementFee = (gross: number) => Number((gross * MANAGEMENT_FEE_RATE).toFixed(2));
+  const calculateTotalWithdrawalFees = (gross: number) => Number((TRON_WITHDRAWAL_FEE_USD + calculateManagementFee(gross)).toFixed(2));
+  const calculateNetWithdrawal = (gross: number) => Number((gross - calculateTotalWithdrawalFees(gross)).toFixed(2));
+
+  const getInvestmentEndDate = (startDate: Date, durationHours: number) => {
+    return new Date(startDate.getTime() + durationHours * 3600 * 1000);
+  };
+
+  const isInvestmentMature = (investment: ActiveInvestment) => {
+    return new Date(investment.endDate).getTime() <= Date.now();
+  };
+
   // Listen to hash change for navigation
   useEffect(() => {
     const handleHash = () => {
@@ -73,6 +99,7 @@ export default function App() {
 
   // Load investments from Supabase
   const loadUserInvestments = async (userId: string) => {
+    setIsLoadingInvestments(true);
     try {
       const { data, error } = await supabase
         .from('investments')
@@ -80,34 +107,52 @@ export default function App() {
         .eq('user_id', userId)
         .order('start_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase fetch error:', error);
+        throw error;
+      }
 
       if (data) {
-        const mapped = data.map((inv: any) => ({
-          id: inv.id,
-          planId: inv.plan_id,
-          planLabel: inv.plan_label,
-          category: inv.category,
-          capital: Number(inv.capital),
-          roi: Number(inv.roi),
-          startDate: inv.start_date,
-          endDate: inv.end_date,
-          durationHours: inv.duration_hours,
-          progress: 0,
-          currentEarning: Number(inv.capital),
-          status: inv.status
-        }));
+        const mapped = data.map((inv: any) => {
+          const calculatedEndDate = inv.end_date
+            ? inv.end_date
+            : getInvestmentEndDate(new Date(inv.start_date), Number(inv.duration_hours)).toISOString();
+          const normalizedStatus = inv.status === 'pending'
+            ? 'pending'
+            : inv.status === 'active' && new Date(calculatedEndDate).getTime() <= Date.now()
+              ? 'completed'
+              : inv.status;
+
+          return {
+            id: inv.id,
+            planId: inv.plan_id,
+            planLabel: inv.plan_label,
+            category: inv.category,
+            capital: Number(inv.capital),
+            roi: Number(inv.roi),
+            startDate: inv.start_date,
+            endDate: calculatedEndDate,
+            durationHours: Number(inv.duration_hours),
+            progress: 0,
+            currentEarning: Number(inv.capital),
+            status: normalizedStatus,
+          };
+        });
         
-        // Sum claimed earnings dynamically
+        // Sum claimed earnings dynamically using net payout after fees
         const claimedSum = mapped
           .filter(inv => inv.status === 'claimed')
-          .reduce((sum, inv) => sum + inv.roi, 0);
+          .reduce((sum, inv) => sum + calculateNetWithdrawal(Number(inv.roi)), 0);
         
+        console.log(`Successfully loaded ${mapped.length} investments for user ${userId}`);
         setTotalClaimedEarnings(claimedSum);
         setActiveInvestments(mapped);
       }
     } catch (e) {
       console.error('Failed to load investments from Supabase', e);
+      setActiveInvestments([]);
+    } finally {
+      setIsLoadingInvestments(false);
     }
   };
 
@@ -139,9 +184,7 @@ export default function App() {
           
           await supabase.from('profiles').upsert({
             id: signupRes.data.user.id,
-            username: demoEmail,
-            wallet_address: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d',
-            rank: 'Gold',
+            user_rank: 'Gold',
             join_date: '2026-07-01T00:00:00Z',
             trust_score: 94,
             base_invested: 15000,
@@ -156,6 +199,7 @@ export default function App() {
         setCurrentUser({ username: demoEmail, walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d' });
         setIsAuthenticated(true);
         setCurrentPage('dashboard');
+        // Properly await the investments load
         await loadUserInvestments(data.user.id);
       } else {
         setCurrentPage('landing');
@@ -168,26 +212,30 @@ export default function App() {
 
   // Load persistent session and investments from Supabase
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Call async function to load session and investments
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const email = session.user.email || '';
         setCurrentUser({ username: email, walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d' });
         setIsAuthenticated(true);
         setCurrentPage('dashboard');
-        loadUserInvestments(session.user.id);
+        await loadUserInvestments(session.user.id);
       } else {
-        autoLoginDemoUser();
+        await autoLoginDemoUser();
       }
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
         const email = session.user.email || '';
         setCurrentUser({ username: email, walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d' });
         setIsAuthenticated(true);
         setCurrentPage('dashboard');
-        loadUserInvestments(session.user.id);
+        await loadUserInvestments(session.user.id);
       } else {
         setCurrentUser(null);
         setIsAuthenticated(false);
@@ -202,9 +250,9 @@ export default function App() {
     setCurrentUser({ username, walletAddress });
     setIsAuthenticated(true);
     setCurrentPage('dashboard');
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
-        loadUserInvestments(user.id);
+        await loadUserInvestments(user.id);
       }
     });
   };
@@ -238,13 +286,7 @@ export default function App() {
     if (!user) return;
 
     const now = new Date();
-    let durationSeconds = 120; // 2 minutes
-    if (plan.category === '2day') {
-      durationSeconds = 240; // 4 minutes
-    } else if (plan.category === 'weekly') {
-      durationSeconds = 600; // 10 minutes
-    }
-    const end = new Date(now.getTime() + durationSeconds * 1000);
+    const end = getInvestmentEndDate(now, plan.durationHours);
 
     const newDbInvestment = {
       user_id: user.id,
@@ -256,7 +298,7 @@ export default function App() {
       start_date: now.toISOString(),
       end_date: end.toISOString(),
       duration_hours: plan.durationHours,
-      status: 'active',
+      status: 'pending',
       screenshot_url: screenshotBase64 || null,
       payment_method: paymentMethod || 'Crypto'
     };
@@ -288,6 +330,12 @@ export default function App() {
 
         setActiveInvestments(prev => [mappedNew, ...prev]);
         setActiveTab('dashboard');
+        setPurchaseConfirmation({
+          plan,
+          paymentMethod: paymentMethod || 'Crypto',
+          username,
+        });
+        setCurrentPage('confirmation');
       }
     } catch (e) {
       console.error('Failed to create investment in Supabase', e);
@@ -317,7 +365,17 @@ export default function App() {
   };
 
   // Handle simulated withdrawal payout claim
-  const handleClaimPayout = async (id: string) => {
+  const handleClaimPayout = async (id: string, feeCurrency: 'TRX' | 'USDT' | 'BTC' | 'ETH') => {
+    const investment = activeInvestments.find(inv => inv.id === id);
+    if (investment) {
+      const now = Date.now();
+      const endTime = new Date(investment.endDate).getTime();
+      if (endTime > now) {
+        alert('This investment is not yet mature. Please wait until the maturity date before withdrawing.');
+        return;
+      }
+    }
+
     try {
       const { data, error } = await supabase
         .from('investments')
@@ -329,9 +387,20 @@ export default function App() {
       if (error) throw error;
 
       if (data) {
+        const grossPayout = Number(data.roi);
+        const managementFee = calculateManagementFee(grossPayout);
+        const totalFee = calculateTotalWithdrawalFees(grossPayout);
+        const netPayout = Math.max(grossPayout - totalFee, 0);
+
         const updated = activeInvestments.map(inv => {
           if (inv.id === id) {
-            return { ...inv, status: 'claimed' as const, progress: 100, currentEarning: Number(data.roi) };
+            return {
+              ...inv,
+              status: 'claimed' as const,
+              progress: 100,
+              currentEarning: grossPayout,
+              netPayout,
+            };
           }
           return inv;
         });
@@ -339,19 +408,14 @@ export default function App() {
         
         const claimedSum = updated
           .filter(inv => inv.status === 'claimed')
-          .reduce((sum, inv) => sum + inv.roi, 0);
-        
+          .reduce((sum, inv) => sum + (inv.netPayout ?? Number(inv.roi)), 0);
+
         setTotalClaimedEarnings(claimedSum);
       }
     } catch (e) {
       console.error('Failed to claim payout in Supabase', e);
     }
   };
-
-  // Group plans by category for easy display
-  const plans24h = INVESTMENT_PLANS.filter(p => p.category === '24h');
-  const plans2day = INVESTMENT_PLANS.filter(p => p.category === '2day');
-  const plansWeekly = INVESTMENT_PLANS.filter(p => p.category === 'weekly');
 
   if (currentPage === 'landing') {
     return (
@@ -371,77 +435,149 @@ export default function App() {
     );
   }
 
+  if (currentPage === 'confirmation' && purchaseConfirmation) {
+    return (
+      <PurchaseConfirmation
+        plan={purchaseConfirmation.plan}
+        paymentMethod={purchaseConfirmation.paymentMethod}
+        username={purchaseConfirmation.username}
+        onReturnToDashboard={() => {
+          setPurchaseConfirmation(null);
+          setCurrentPage('dashboard');
+          setActiveTab('dashboard');
+          setSelectedPlan(null);
+        }}
+      />
+    );
+  }
+
+  // All nav tabs used in desktop + tablet navs
+  const allNavTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'plans', label: 'Plans', icon: Coins },
+    { id: 'calculator', label: 'Calculator', icon: Calculator },
+    { id: 'profiles', label: 'Profile', icon: Award },
+    { id: 'community', label: 'Forum', icon: MessageSquare },
+    { id: 'support', label: 'Broker', icon: ShieldCheck },
+  ];
+
+  // Mobile bottom bar — 4 primary + More
+  const mobileBottomTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'plans', label: 'Plans', icon: Coins },
+    { id: 'calculator', label: 'Calculator', icon: Calculator },
+    { id: 'profiles', label: 'Profile', icon: Award },
+    { id: 'community', label: 'Forum', icon: MessageSquare },
+  ];
+
+  // Mobile More sheet tabs
+  const moreSheetTabs = [
+    { id: 'support', label: 'Secure Broker', icon: ShieldCheck },
+  ];
+
+  // Current page label for mobile header
+  const currentTabLabel = allNavTabs.find(t => t.id === activeTab)?.label || 'Dashboard';
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId as any);
+    setMobileMoreOpen(false);
+  };
+
+  const plans24h = INVESTMENT_PLANS.filter(p => p.category === '24h');
+  const plans2day = INVESTMENT_PLANS.filter(p => p.category === '2day');
+  const plansWeekly = INVESTMENT_PLANS.filter(p => p.category === 'weekly');
+
   return (
     <div id="forex-royal-app-root" className="min-h-screen bg-[#08080a] text-gray-100 flex flex-col font-sans selection:bg-amber-400 selection:text-black">
       
-      {/* Premium Header / Navigation Bar */}
+      {/* ============================================================
+          HEADER — responsive: desktop full labels | tablet icon-only | mobile title+hamburger 
+          ============================================================ */}
       <header id="royal-app-header" className="sticky top-0 z-40 bg-[#0d0e12]/90 border-b border-amber-500/15 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
+          <div className="flex h-16 md:h-20 items-center justify-between gap-2">
             
-            {/* Logo Brand Brand */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-600 via-yellow-400 to-amber-600 shadow-md shadow-amber-500/10">
-                <Crown className="h-6 w-6 text-[#0d0e12]" />
+            {/* Logo */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="relative flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-600 via-yellow-400 to-amber-600 shadow-md shadow-amber-500/10">
+                <Crown className="h-5 w-5 md:h-6 md:w-6 text-[#0d0e12]" />
                 <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 opacity-20 blur-sm"></div>
               </div>
-              <div className="text-left">
-                <h1 className="font-display text-lg font-black tracking-widest text-[#d4af37] leading-none">
+              <div className="text-left hidden sm:block">
+                <h1 className="font-display text-base md:text-lg font-black tracking-widest text-[#d4af37] leading-none">
                   FOREX ROYAL
                 </h1>
-                <span className="text-[9px] uppercase tracking-widest text-gray-400 font-mono block mt-1">
+                <span className="text-[8px] uppercase tracking-widest text-gray-400 font-mono block mt-0.5">
                   PRESTIGE INVESTMENT POOL
                 </span>
               </div>
+              {/* Mobile: show only brand name, no tagline */}
+              <div className="text-left sm:hidden">
+                <h1 className="font-display text-sm font-black tracking-widest text-[#d4af37] leading-none">
+                  FOREX ROYAL
+                </h1>
+              </div>
             </div>
 
-            {/* Desktop Horizontal Tabs */}
-            <nav className="hidden md:flex items-center gap-1.5" id="desktop-navbar">
-              {[
-                { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                { id: 'plans', label: 'Investment Plans', icon: Coins },
-                { id: 'profiles', label: 'My Profile', icon: Award },
-                { id: 'community', label: 'Royal Forum', icon: MessageSquare },
-                { id: 'support', label: 'Secure Broker', icon: ShieldCheck }
-              ].map(tab => {
+            {/* Mobile center: current page title */}
+            <div className="flex-1 flex justify-center md:hidden">
+              <span className="text-xs font-bold uppercase tracking-widest text-white/70 font-mono">
+                {currentTabLabel}
+              </span>
+            </div>
+
+            {/* Desktop + Tablet Nav — hidden on mobile */}
+            <nav className="hidden md:flex items-center gap-1" id="desktop-navbar" aria-label="Main navigation">
+              {allNavTabs.map(tab => {
                 const TabIcon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     id={`nav-btn-${tab.id}`}
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                    onClick={() => handleTabChange(tab.id)}
+                    title={tab.label}
+                    className={`touch-target flex items-center gap-1.5 rounded-xl px-2.5 lg:px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                       isActive 
                         ? 'bg-amber-500/10 text-[#d4af37] border-b-2 border-amber-400/80 shadow-inner' 
                         : 'text-gray-400 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    <TabIcon className="h-4 w-4" />
-                    <span>{tab.label}</span>
+                    <TabIcon className="h-4 w-4 shrink-0" />
+                    {/* Labels only on large screens to prevent overflow */}
+                    <span className="hidden lg:inline">{tab.label}</span>
                   </button>
                 );
               })}
             </nav>
 
-            {/* Right side Portfolio Summary Pill */}
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex flex-col text-right">
-                <span className="text-[9px] text-gray-500 font-mono font-bold uppercase">SECURED DIVIDENDS CLAIMED</span>
-                <span className="font-mono text-sm font-black text-emerald-400">
+            {/* Right side: Wallet pill (tablet+) + hamburger (mobile) */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Wallet pill — tablet and up */}
+              <div className="hidden md:flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                <Wallet className="h-4 w-4 text-emerald-400 shrink-0" />
+                <div className="hidden lg:flex flex-col text-right">
+                  <span className="text-[8px] text-gray-500 font-mono font-bold uppercase leading-none">CLAIMED</span>
+                  <span className="font-mono text-xs font-black text-emerald-400">
+                    £{totalClaimedEarnings.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Mobile: wallet balance compact */}
+              <div className="flex md:hidden items-center gap-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-2">
+                <Wallet className="h-4 w-4 text-emerald-400" />
+                <span className="font-mono text-xs font-black text-emerald-400">
                   £{totalClaimedEarnings.toLocaleString()}
                 </span>
-              </div>
-              <div className="h-10 w-10 sm:h-auto sm:px-4 sm:py-2.5 flex items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                <Wallet className="h-5 w-5" />
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Body Stage */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8" id="royal-main-viewport">
+      {/* Main Body Stage — extra bottom padding on mobile for the fixed bottom nav */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-24 md:pb-8" id="royal-main-viewport">
         
         {/* Dynamic Tab Switching Content with animations */}
         <AnimatePresence mode="wait">
@@ -581,7 +717,7 @@ export default function App() {
               </motion.div>
 
               {/* Ticking Active Simulations Container (High focus!) */}
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 md:gap-8 xl:grid-cols-3">
                 
                 {/* Active Portfolio Column */}
                 <div className="lg:col-span-2 space-y-6">
@@ -591,7 +727,7 @@ export default function App() {
                       <h3 className="font-display text-sm font-bold uppercase tracking-wider text-white">YOUR ACTIVE PORTFOLIO</h3>
                     </div>
                     <span className="text-xs text-gray-500 font-mono">
-                      {activeInvestments.filter(i => i.status === 'active').length} Active Contracts
+                      {activeInvestments.filter(i => i.status === 'active' || i.status === 'pending').length} Active/Pending Contracts
                     </span>
                   </div>
 
@@ -623,7 +759,7 @@ export default function App() {
                           <ActiveInvestmentComponent 
                             key={inv.id} 
                             investment={inv} 
-                            onClaim={handleClaimPayout} 
+                            onClaim={(id, feeCurrency) => handleClaimPayout(id, feeCurrency)} 
                           />
                         ))}
                     </div>
@@ -1002,34 +1138,138 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Persistent Mobile Bottom Navigation Bar */}
-      <div id="mobile-navigation-bar" className="md:hidden fixed bottom-0 inset-x-0 bg-[#0d0e12]/95 border-t border-amber-500/15 backdrop-blur-md py-2.5 z-40 flex justify-around">
-        {[
-          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'plans', label: 'Plans', icon: Coins },
-          { id: 'community', label: 'Forum', icon: MessageSquare },
-          { id: 'support', label: 'Funding', icon: ShieldCheck }
-        ].map(tab => {
+      {/* ============================================================
+          MOBILE BOTTOM NAVIGATION BAR — hidden on md+
+          ============================================================ */}
+      <div
+        id="mobile-navigation-bar"
+        className="md:hidden fixed bottom-0 inset-x-0 bg-[#0d0e12]/97 border-t border-amber-500/20 backdrop-blur-lg z-40 flex justify-around items-center mobile-nav-safe"
+        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+      >
+        {mobileBottomTabs.map((tab, idx) => {
           const TabIcon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               id={`mobile-nav-btn-${tab.id}`}
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                isActive ? 'text-[#d4af37]' : 'text-gray-500 hover:text-white'
+              onClick={() => handleTabChange(tab.id)}
+              className={`touch-target flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-all duration-200 flex-1 py-2 ${
+                isActive
+                  ? 'text-[#d4af37]'
+                  : 'text-gray-500 active:text-white'
               }`}
             >
-              <TabIcon className="h-5 w-5" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">{tab.label}</span>
+              <div className={`relative flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+                isActive ? 'bg-amber-500/15' : ''
+              }`}>
+                <TabIcon className="h-5 w-5" />
+                {isActive && (
+                  <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full bg-[#d4af37]" />
+                )}
+              </div>
+              <span className={`hidden sm:block text-[9px] font-bold uppercase tracking-widest truncate ${idx === 2 ? 'max-w-[48px]' : ''}`}>{tab.label}</span>
             </button>
           );
         })}
+
+        {/* More button */}
+        <button
+          id="mobile-nav-btn-more"
+          onClick={() => setMobileMoreOpen(prev => !prev)}
+          className={`touch-target flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-all duration-200 flex-1 py-2 ${
+            mobileMoreOpen || ['support'].includes(activeTab)
+              ? 'text-[#d4af37]'
+              : 'text-gray-500 active:text-white'
+          }`}
+        >
+          <div className={`relative flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+            mobileMoreOpen || ['support'].includes(activeTab) ? 'bg-amber-500/15' : ''
+          }`}>
+            <MoreHorizontal className="h-5 w-5" />
+          </div>
+          <span className="hidden sm:block text-[9px] font-bold uppercase tracking-widest">More</span>
+        </button>
       </div>
-      
-      {/* Padding space at the bottom for mobile nav */}
-      <div className="h-16 md:hidden"></div>
+
+      {/* ============================================================
+          MOBILE MORE SLIDE-UP SHEET
+          ============================================================ */}
+      <AnimatePresence>
+        {mobileMoreOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="more-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileMoreOpen(false)}
+              className="md:hidden fixed inset-0 bg-black/60 z-30"
+            />
+            {/* Sheet */}
+            <motion.div
+              key="more-sheet"
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0d0e12] border-t border-amber-500/25 rounded-t-2xl"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+            >
+              {/* Sheet Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="h-1 w-10 rounded-full bg-gray-700" />
+              </div>
+
+              <div className="px-4 pb-2">
+                <p className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-3 px-1">More Options</p>
+
+                {moreSheetTabs.map(tab => {
+                  const TabIcon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      id={`more-sheet-btn-${tab.id}`}
+                      onClick={() => handleTabChange(tab.id)}
+                      className={`w-full flex items-center gap-4 rounded-xl px-4 py-3.5 mb-1.5 text-sm font-semibold transition-all cursor-pointer touch-target ${
+                        isActive
+                          ? 'bg-amber-500/10 text-[#d4af37] border border-amber-500/20'
+                          : 'text-gray-300 hover:bg-white/5 active:bg-white/10'
+                      }`}
+                    >
+                      <TabIcon className="h-5 w-5 shrink-0" />
+                      <span>{tab.label}</span>
+                      <ChevronRight className="h-4 w-4 ml-auto text-gray-500" />
+                    </button>
+                  );
+                })}
+
+                {/* Logout */}
+                <button
+                  id="more-sheet-btn-logout"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-4 rounded-xl px-4 py-3.5 mb-1.5 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer touch-target"
+                >
+                  <X className="h-5 w-5 shrink-0" />
+                  <span>Sign Out</span>
+                </button>
+
+                {/* Divider + wallet info */}
+                <div className="mt-3 pt-3 border-t border-amber-500/10 flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-emerald-400" />
+                    <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Claimed Dividends</span>
+                  </div>
+                  <span className="font-mono text-sm font-black text-emerald-400">£{totalClaimedEarnings.toLocaleString()}</span>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

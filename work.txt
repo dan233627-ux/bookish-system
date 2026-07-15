@@ -1,0 +1,154 @@
+## Todo List: Investment Tracking, Plan Maturity, and Countdown
+
+1. **Verify Supabase `investments` table**
+   - Confirm fields exist:
+     - `id`
+     - `user_id`
+     - `plan_id`
+     - `plan_label`
+     - `category`
+     - `capital`
+     - `roi`
+     - `start_date`
+     - `end_date`
+     - `duration_hours`
+     - `status`
+     - `screenshot_url`
+     - `payment_method`
+   - Add missing fields if needed.
+
+2. **Ensure plan selection is saved on deposit**
+   - Confirm `PlanCard` selects a plan and opens `DepositModal`.
+   - Confirm `DepositModal` passes selected `InvestmentPlan` to `handleConfirmDeposit`.
+
+3. **Record purchase time and maturity duration**
+   - When saving a deposit in App.tsx:
+     - set `start_date` to the purchase timestamp
+     - compute `end_date` from `start_date + plan duration`
+     - store `category` or plan type (`24h`, `2day`, `weekly`)
+
+4. **Persist deposit and plan details**
+   - Save deposit record to Supabase with:
+     - `user_id`
+     - plan metadata
+     - selected plan category
+     - `capital`, `roi`
+     - `duration_hours`
+     - `start_date`, `end_date`
+     - `status: 'active'`
+
+5. **Load and map investments from DB**
+   - In App.tsx `loadUserInvestments()`:
+     - read `start_date`, `end_date`, `category`
+     - map values into `ActiveInvestment`
+     - keep `status` from DB
+
+6. **Implement maturity countdown**
+   - In ActiveInvestment.tsx:
+     - calculate `timeRemaining` from DB `endDate`
+     - calculate progress from `startDate` / `endDate`
+     - update every second
+     - show `Ready to Claim` when past maturity
+
+7. **Block withdrawal until maturity**
+   - Keep claim button disabled until:
+     - `timeRemaining` is zero OR
+     - `currentProgress >= 100`
+   - Only allow status update to `claimed` after maturity
+
+8. **Add maturity validation helper**
+   - Add a reusable function for:
+     - plan category → duration
+     - start date → end date
+     - withdrawal eligibility
+   - Use it in both deposit creation and UI countdown
+
+9. **Review UI labels and user state**
+   - Ensure the dashboard shows:
+     - plan type selected
+     - purchase date
+     - maturity date
+     - countdown timer
+   - Confirm active investments show correct status (`active`, `completed`, `claimed`)
+
+10. **Test end-to-end**
+    - Create a deposit for each plan type
+    - Verify record is stored correctly
+    - Verify countdown and claim behavior
+    - Verify completed investment status transitions correctly
+
+> This todo list ensures investments are tracked in the database with plan selection, purchase date, maturity date, and a countdown until withdrawal becomes allowed.
+
+Read [](file:///c%3A/Users/PC/OneDrive/Desktop/maish/src/App.tsx#340-340), lines 340 to 520
+
+## Todo List: Investment Tracking + Maturity Countdown
+
+1. **Audit Supabase schema**
+   - Confirm `investments` table exists.
+   - Verify columns:
+     - `id`
+     - `user_id`
+     - `plan_id`
+     - `plan_label`
+     - `category`
+     - `capital`
+     - `roi`
+     - `start_date`
+     - `end_date`
+     - `duration_hours`
+     - `status`
+     - `screenshot_url`
+     - `payment_method`
+
+2. **Capture user plan selection**
+   - Ensure `PlanCard` passes the selected `InvestmentPlan` to `DepositModal`.
+   - Confirm deposit modal submits the chosen plan category (`24h`, `2day`, `weekly`).
+
+3. **Save deposit + plan metadata**
+   - In App.tsx:
+     - set `start_date` to the purchase timestamp.
+     - compute `end_date` from `start_date + plan duration`.
+     - persist `category`, `plan_id`, `plan_label`, `capital`, `roi`, and `duration_hours`.
+
+4. **Track purchase timing**
+   - Store the exact purchase date/time with every investment record.
+   - Keep plan type and duration with the record for accurate maturity calculation.
+
+5. **Load investment records correctly**
+   - In `loadUserInvestments()`:
+     - fetch and map `start_date`, `end_date`, `duration_hours`, and `status`.
+     - preserve plan category and maturity dates in `ActiveInvestment`.
+
+6. **Implement countdown logic**
+   - In ActiveInvestment.tsx:
+     - compute progress using `startDate` → `endDate`.
+     - compute remaining time until maturity.
+     - refresh every second.
+     - show “Ready to Claim” after maturity.
+
+7. **Guard withdrawals until maturity**
+   - Disable claim button until countdown reaches zero / progress is 100%.
+   - Only allow status update to `claimed` once `end_date` has passed.
+
+8. **Add reusable helper functions**
+   - Create functions for:
+     - plan duration lookup by category
+     - maturity calculation
+     - withdrawal eligibility
+   - Use these in deposit creation and UI rendering.
+
+9. **Update UI feedback**
+   - Display on active investments:
+     - selected plan type
+     - date purchased
+     - maturity date/time
+     - live countdown timer
+     - current progress / earned amount
+
+10. **Test end-to-end**
+    - Make deposits for `24h`, `2day`, and `weekly` plans.
+    - Check DB rows match the plan and timestamps.
+    - Verify countdown and claim behavior.
+    - Confirm completed/claimed statuses update correctly.
+
+> This list ensures client investments are stored with plan choice and dates, and that the app shows a countdown until maturity before withdrawal is allowed.

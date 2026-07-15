@@ -53,7 +53,7 @@ export default function PlanCard({ plan, onSelect }: PlanCardProps) {
           <span className="block text-[10px] font-bold uppercase tracking-wider text-gray-500">
             INVEST CAPITAL
           </span>
-          <span className="font-display text-2xl font-black text-white md:text-3xl">
+          <span className="font-display text-xl md:text-2xl xl:text-3xl font-black text-white">
             £{plan.capital.toLocaleString()}
           </span>
         </div>
@@ -61,7 +61,7 @@ export default function PlanCard({ plan, onSelect }: PlanCardProps) {
           <span className="block text-[10px] font-bold uppercase tracking-wider text-[#d4af37]">
             GUARANTEED ROI
           </span>
-          <span className="font-display text-2xl font-black text-[#d4af37] md:text-3xl shimmer-gold">
+          <span className="font-display text-xl md:text-2xl xl:text-3xl font-black text-[#d4af37] shimmer-gold">
             £{plan.roi.toLocaleString()}
           </span>
         </div>
@@ -88,7 +88,7 @@ export default function PlanCard({ plan, onSelect }: PlanCardProps) {
         <button
           id={`btn-select-plan-${plan.id}`}
           onClick={() => onSelect(plan)}
-          className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-extrabold uppercase tracking-widest transition-all duration-300 cursor-pointer ${
+          className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-extrabold uppercase tracking-widest transition-all duration-300 cursor-pointer min-h-[48px] ${
             isHighValue
               ? 'bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 text-[#0c0d12] hover:shadow-lg hover:shadow-amber-500/10 hover:brightness-110'
               : 'bg-[#181920] border border-amber-500/20 text-[#d4af37] hover:bg-[#d4af37] hover:text-[#0c0d12] hover:border-[#d4af37]'

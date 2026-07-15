@@ -25,15 +25,14 @@ interface ProfilesProps {
 
 interface DbProfile {
   id: string;
-  username: string;
-  wallet_address: string;
-  rank: string;
+  user_rank: string;
   join_date: string;
   trust_score: number;
   base_invested: number;
   base_earnings: number;
   base_withdrawn: number;
   base_completed: number;
+  wallet_address?: string;
 }
 
 export default function Profiles({ 
@@ -56,9 +55,9 @@ export default function Profiles({
 
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, wallet_address, rank, join_date, trust_score, base_invested, base_earnings, base_withdrawn, base_completed')
+          .select('*')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('Error fetching profile:', error.message);
@@ -81,16 +80,25 @@ export default function Profiles({
   const baseWithdrawn  = Number(dbProfile?.base_withdrawn ?? 0);
   const baseCompleted  = Number(dbProfile?.base_completed ?? 0);
   const trustScore     = Number(dbProfile?.trust_score    ?? 0);
-  const rank           = dbProfile?.rank      || 'Bronze';
+  const rank           = dbProfile?.user_rank || dbProfile?.rank || 'Bronze';
   const joinDate       = dbProfile?.join_date || new Date().toISOString();
   const walletAddress  = dbProfile?.wallet_address || currentUser?.walletAddress || '—';
-  const username       = dbProfile?.username || currentUser?.username || '—';
+  const username       = currentUser?.username || '—';
 
   // Dynamically compute totals from DB base + live investments
-  const userInvested = activeInvestments.reduce((sum, inv) => sum + inv.capital, 0);
-  const userEarnings = activeInvestments.reduce((sum, inv) => sum + inv.roi, 0);
+  const pendingInvested = activeInvestments
+    .filter(inv => inv.status === 'pending')
+    .reduce((sum, inv) => sum + inv.capital, 0);
+  const confirmedInvested = activeInvestments
+    .filter(inv => inv.status !== 'pending')
+    .reduce((sum, inv) => sum + inv.capital, 0);
+  const userInvested = pendingInvested + confirmedInvested;
 
-  const activeCount        = activeInvestments.filter(inv => inv.status === 'active' || inv.status === 'completed').length;
+  const userEarnings = activeInvestments
+    .filter(inv => inv.status !== 'pending')
+    .reduce((sum, inv) => sum + inv.roi, 0);
+
+  const activeCount        = activeInvestments.filter(inv => inv.status === 'active' || inv.status === 'pending' || inv.status === 'completed').length;
   const claimedCount       = activeInvestments.filter(inv => inv.status === 'claimed').length;
 
   const totalInvested      = baseInvested + userInvested;
@@ -99,7 +107,10 @@ export default function Profiles({
   const completedContracts = baseCompleted + claimedCount;
   const totalContracts     = completedContracts + activeCount;
 
-  const roiPercentage  = totalInvested > 0 ? Math.round((totalEarnings / totalInvested) * 100) : 0;
+  const netProfitBase = totalEarnings - (baseInvested + confirmedInvested);
+  const netProfit      = Math.max(0, netProfitBase);
+  const effectiveInvested = baseInvested + confirmedInvested;
+  const roiPercentage  = effectiveInvested > 0 ? Math.round((totalEarnings / effectiveInvested) * 100) : 0;
   const successRate    = totalContracts > 0 ? Math.round((completedContracts / totalContracts) * 100) : 0;
 
   const getRankColor = (r: string) => {
@@ -239,7 +250,7 @@ export default function Profiles({
             <div className="flex items-center justify-between p-4 bg-[#171821] rounded-lg border border-blue-500/10">
               <div>
                 <p className="text-sm text-gray-400 font-mono">Net Profit</p>
-                <p className="text-2xl font-black text-blue-300 mt-1">£{(totalEarnings - totalInvested).toLocaleString()}</p>
+                <p className="text-2xl font-black text-blue-300 mt-1">£{netProfit.toLocaleString()}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-blue-500 font-mono">Your Return</p>

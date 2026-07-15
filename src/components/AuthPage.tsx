@@ -77,9 +77,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
           // 2. Insert row in profiles table
           const { error: profileError } = await supabase.from('profiles').insert({
             id: data.user.id,
-            username: email,
-            wallet_address: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d', // Default demo EVM wallet
-            rank: 'Bronze',
+            user_rank: 'Bronze',
             trust_score: 94,
             base_invested: 0,
             base_earnings: 0,
@@ -123,20 +121,13 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
         }
 
         if (data?.user) {
-          // Fetch user's profile information from database
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('wallet_address')
-            .eq('id', data.user.id)
-            .single();
-
           // Save credentials locally for auto-fill on next visit
           localStorage.setItem('saved_username', username);
           localStorage.setItem('saved_password', password);
 
           clearInterval(messageInterval);
           setLoading(false);
-          onAuthSuccess(email, profile?.wallet_address || '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d');
+          onAuthSuccess(email, '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d');
         }
       }
     } catch (err: any) {
@@ -250,7 +241,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
                       placeholder="e.g. RoyalScalper"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full bg-[#121318]/90 border border-white/[0.06] focus:border-[#d4af37]/60 focus:ring-1 focus:ring-[#d4af37]/20 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-600 outline-none transition-all"
+                      className="w-full bg-[#121318]/90 border border-white/[0.06] focus:border-[#d4af37]/60 focus:ring-1 focus:ring-[#d4af37]/20 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-600 outline-none transition-all min-h-[48px]"
                     />
                   </div>
                 </div>
@@ -267,7 +258,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-[#121318]/90 border border-white/[0.06] focus:border-[#d4af37]/60 focus:ring-1 focus:ring-[#d4af37]/20 rounded-xl pl-11 pr-11 py-3 text-sm text-white placeholder-gray-600 outline-none transition-all"
+                      className="w-full bg-[#121318]/90 border border-white/[0.06] focus:border-[#d4af37]/60 focus:ring-1 focus:ring-[#d4af37]/20 rounded-xl pl-11 pr-11 py-3 text-sm text-white placeholder-gray-600 outline-none transition-all min-h-[48px]"
                     />
                     <button
                       type="button"
@@ -283,7 +274,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
                 {/* Submit button */}
                 <button
                   type="submit"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 shadow-md shadow-amber-500/10 transition-all mt-6 cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 shadow-md shadow-amber-500/10 transition-all mt-6 cursor-pointer min-h-[48px]"
                 >
                   <span>{activeTab === 'signin' ? 'Unlock Terminal' : 'Register & Initialize'}</span>
                   <ArrowRight className="h-4 w-4" />

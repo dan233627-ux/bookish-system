@@ -1,21 +1,42 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, Users, Award, ShieldCheck, Zap } from 'lucide-react';
+import { supabase } from '../utils/supabase/client';
+
+interface DashboardMetrics {
+  total_pool_size: number;
+  active_royal_traders: number;
+  total_roi_payouts: number;
+  weekly_growth_pct: number;
+  joined_today: number;
+}
 
 export default function DashboardStats() {
   const [poolCapital, setPoolCapital] = useState(2458900);
   const [activeMembers, setActiveMembers] = useState(14208);
   const [totalPayouts, setTotalPayouts] = useState(1894000);
+  const [weeklyGrowth, setWeeklyGrowth] = useState(18.4);
+  const [joinedToday, setJoinedToday] = useState(249);
 
-  // Slow ticks to simulate active high frequency pool trading
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPoolCapital(prev => prev + Math.floor(Math.random() * 80) + 15);
-      if (Math.random() > 0.7) {
-        setActiveMembers(prev => prev + 1);
+    const loadMetrics = async () => {
+      const { data, error } = await supabase.rpc<DashboardMetrics>('get_dashboard_metrics');
+      if (error) {
+        console.error('Failed to load dashboard metrics', error);
+        return;
       }
-      setTotalPayouts(prev => prev + Math.floor(Math.random() * 120) + 30);
-    }, 4000);
+
+      if (data) {
+        setPoolCapital(Number(data.total_pool_size ?? poolCapital));
+        setActiveMembers(Number(data.active_royal_traders ?? activeMembers));
+        setTotalPayouts(Number(data.total_roi_payouts ?? totalPayouts));
+        setWeeklyGrowth(Number(data.weekly_growth_pct ?? weeklyGrowth));
+        setJoinedToday(Number(data.joined_today ?? joinedToday));
+      }
+    };
+
+    loadMetrics();
+    const interval = setInterval(loadMetrics, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -26,7 +47,7 @@ export default function DashboardStats() {
       label: 'TOTAL ROYAL POOL SIZE',
       value: `£${poolCapital.toLocaleString()}`,
       icon: TrendingUp,
-      change: '+18.4% this week',
+      change: `${weeklyGrowth >= 0 ? '+' : ''}${weeklyGrowth.toFixed(1)}% this week`,
       color: 'from-amber-500/20 to-yellow-600/5'
     },
     {
@@ -34,7 +55,7 @@ export default function DashboardStats() {
       label: 'ACTIVE ROYAL TRADERS',
       value: activeMembers.toLocaleString(),
       icon: Users,
-      change: '+249 joined today',
+      change: `+${joinedToday.toLocaleString()} joined today`,
       color: 'from-amber-600/20 to-yellow-700/5'
     },
     {
@@ -61,23 +82,23 @@ export default function DashboardStats() {
         <div className="absolute -top-24 -left-24 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl"></div>
         <div className="absolute -bottom-24 -right-24 h-48 w-48 rounded-full bg-yellow-500/10 blur-3xl"></div>
 
-        <div className="flex flex-col items-center justify-between gap-4 md:flex-row md:gap-8">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 ring-2 ring-amber-500/20">
+        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:gap-8">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 ring-2 ring-amber-500/20">
               <Zap className="h-7 w-7 animate-pulse text-amber-400" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-display text-lg font-bold tracking-wider text-[#d4af37]">
-                  FOREX ROYAL POOL TRADING INVESTMENT
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-display text-sm sm:text-base md:text-lg font-bold tracking-wider text-[#d4af37] leading-snug">
+                  FOREX ROYAL POOL TRADING
                 </h2>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/20">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/20 shrink-0">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
                   ACTIVE ✅
                 </span>
               </div>
-              <p className="mt-1 text-sm text-gray-400 max-w-xl">
-                Experience high-frequency algorithm trading backed by Royal brokers. Secure fixed returns on 24-Hour, 2-Day, and Weekly cycles.
+              <p className="mt-1 text-sm text-gray-400 leading-relaxed">
+                High-frequency algorithm trading backed by Royal brokers. Secure fixed returns on 24H, 2-Day, and Weekly cycles.
               </p>
             </div>
           </div>
@@ -93,7 +114,7 @@ export default function DashboardStats() {
       </motion.div>
 
       {/* Grid Stats */}
-      <div id="stats-grid" className="grid grid-cols-1 gap-5 md:grid-cols-3">
+      <div id="stats-grid" className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (

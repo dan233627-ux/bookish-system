@@ -40,14 +40,23 @@ export default function DailyOfferModal({ onClose, onAllocate }: DailyOfferModal
   }, []);
 
   return (
-    <div id="daily-offer-backdrop" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+    <div
+      id="daily-offer-backdrop"
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl
+                 flex flex-col justify-end md:justify-center md:items-center md:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <motion.div
         id="daily-offer-box"
-        initial={{ opacity: 0, scale: 0.9, y: 30 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 30 }}
-        transition={{ type: 'spring', damping: 20 }}
-        className="relative w-full max-w-lg overflow-hidden rounded-3xl border-2 border-amber-400 bg-[#0d0e12] text-left shadow-[0_0_50px_rgba(212,175,55,0.25)]"
+        initial={{ opacity: 0, y: 60 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 60 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="relative w-full md:max-w-lg overflow-hidden
+                   rounded-t-3xl md:rounded-3xl
+                   border-2 border-amber-400 bg-[#0d0e12] text-left
+                   shadow-[0_0_50px_rgba(212,175,55,0.25)]
+                   max-h-[92dvh] overflow-y-auto"
       >
         {/* Shimmer Background Accent */}
         <div className="absolute -top-32 -left-32 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl"></div>

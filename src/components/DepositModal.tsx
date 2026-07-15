@@ -103,13 +103,22 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
   };
 
   return (
-    <div id="deposit-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+    <div
+      id="deposit-modal-backdrop"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md overflow-y-auto
+                 flex flex-col justify-end md:justify-center md:items-center md:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <motion.div
         id="deposit-modal-content"
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-amber-500/20 bg-[#0d0e12] text-left shadow-2xl"
+        initial={{ opacity: 0, y: 60 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 60 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="relative w-full md:max-w-lg overflow-hidden
+                   rounded-t-2xl md:rounded-2xl
+                   border border-amber-500/20 bg-[#0d0e12] text-left shadow-2xl
+                   max-h-[92dvh] overflow-y-auto"
       >
         {/* Border golden top bar */}
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600"></div>
@@ -172,7 +181,7 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
                     placeholder="Enter your telegram or dashboard name"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full rounded-xl border border-amber-500/10 bg-[#121318] px-4 py-3 text-sm text-white focus:border-amber-400 focus:outline-none transition-all font-mono"
+                    className="w-full rounded-xl border border-amber-500/10 bg-[#121318] px-4 py-3 md:py-3 text-sm text-white focus:border-amber-400 focus:outline-none transition-all font-mono min-h-[48px]"
                   />
                   {customError && (
                     <p className="text-xs text-rose-400 font-mono mt-1">{customError}</p>
@@ -186,7 +195,7 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
                 <button
                   id="btn-modal-next"
                   onClick={handleNextStep}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#d4af37] py-3.5 text-xs font-extrabold uppercase tracking-widest text-[#0c0d12] hover:brightness-110 cursor-pointer"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#d4af37] py-3.5 text-xs font-extrabold uppercase tracking-widest text-[#0c0d12] hover:brightness-110 cursor-pointer min-h-[48px]"
                 >
                   <span>Continue to Secure Deposit</span>
                   <ArrowRight className="h-4 w-4" />
@@ -323,7 +332,7 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
                 <div className="rounded-lg border border-amber-500/5 bg-[#121318] p-3 flex gap-3">
                   <ShieldCheck className="h-5 w-5 text-amber-400 shrink-0" />
                   <p className="text-[10px] text-gray-400 leading-relaxed">
-                    Upon making the transfer of <strong className="text-white">£{plan.capital.toLocaleString()}</strong> and uploading your screenshot, click the button below to confirm. Your portfolio simulator will instantly initialize, and your earnings will compound in real-time.
+                    Upon making the transfer of <strong className="text-white">£{plan.capital.toLocaleString()}</strong> and uploading your screenshot, click below to create a pending verification request. Your deposit will appear on your dashboard and profile immediately while it awaits admin review.
                   </p>
                 </div>
 
@@ -332,14 +341,14 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
                   <button
                     id="btn-modal-back"
                     onClick={() => setStep(1)}
-                    className="flex-1 rounded-xl border border-gray-800 bg-[#121318] py-3 text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white cursor-pointer"
+                    className="flex-1 rounded-xl border border-gray-800 bg-[#121318] py-3 text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white cursor-pointer min-h-[48px]"
                   >
                     Back
                   </button>
                   <button
                     id="btn-modal-submit"
                     onClick={handleSubmit}
-                    className="flex-[2] rounded-xl bg-gradient-to-r from-amber-600 to-yellow-500 py-3 text-xs font-extrabold uppercase tracking-widest text-[#0c0d12] hover:brightness-110 cursor-pointer shadow-lg shadow-amber-500/10"
+                    className="flex-[2] rounded-xl bg-gradient-to-r from-amber-600 to-yellow-500 py-3 text-xs font-extrabold uppercase tracking-widest text-[#0c0d12] hover:brightness-110 cursor-pointer shadow-lg shadow-amber-500/10 min-h-[48px]"
                   >
                     Confirm Deposit Verification
                   </button>

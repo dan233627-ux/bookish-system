@@ -213,6 +213,7 @@ export const INITIAL_COMMENTS: CommunityComment[] = [
 ];
 
 export const CRYPTO_WALLETS = {
+  TRX: 'TC2C999E01259c50334765bE4988d3F1dC',
   USDT_TRC20: 'TQoGQdLGK9gJ9EvMu7LqQzA6Vs8rn3m6Vp',
   USDT_ERC20: '0x2C999E01259c50334765bE4988d3F1dCF68346c1',
   BTC: 'bc1qmyjpjnvxhn7cuph86dylhzwtha6cdg7thdqnks',

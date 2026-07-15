@@ -1,0 +1,74 @@
+-- Supabase migration scripts for Forex Royal investment tracking
+-- Apply these in the Supabase SQL editor or with your migration tooling.
+
+-- 1. Create profiles table for user profile metadata
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  user_rank text,
+  join_date timestamptz,
+  trust_score integer,
+  base_invested numeric(18,2) default 0,
+  base_earnings numeric(18,2) default 0,
+  base_withdrawn numeric(18,2) default 0,
+  base_completed integer default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists idx_profiles_user_rank on public.profiles(user_rank);
+create index if not exists idx_profiles_trust_score on public.profiles(trust_score);
+
+-- 2. Create investments table for user deposits, plan selection, and maturity tracking
+create table if not exists public.investments (
+  id bigserial primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  plan_id text not null,
+  plan_label text not null,
+  category text not null,
+  capital numeric(18,2) not null,
+  roi numeric(18,2) not null,
+  duration_hours integer not null,
+  start_date timestamptz not null,
+  end_date timestamptz not null,
+  status text not null default 'active',
+  screenshot_url text,
+  payment_method text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  check (status in ('active','completed','claimed'))
+);
+
+create index if not exists idx_investments_user_id on public.investments(user_id);
+create index if not exists idx_investments_status on public.investments(status);
+create index if not exists idx_investments_end_date on public.investments(end_date);
+
+-- 3. Optional: trigger to update updated_at timestamp on row changes
+create or replace function public.set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger investments_set_updated_at
+before update on public.investments
+for each row execute function public.set_updated_at();
+
+create trigger profiles_set_updated_at
+before update on public.profiles
+for each row execute function public.set_updated_at();
+
+-- 4. Backfill/compatibility: if a legacy `rank` column exists, populate `user_rank` from it.
+alter table public.profiles add column if not exists user_rank text;
+-- If a legacy `rank` column exists, copy values then leave legacy column for now
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'rank') then
+    update public.profiles set user_rank = rank where user_rank is null and rank is not null;
+  end if;
+end
+$$;
+
+-- Optionally: drop legacy `rank` column after verification
+-- alter table public.profiles drop column if exists rank;

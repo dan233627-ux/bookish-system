@@ -7,15 +7,83 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* =============================================
+   RESPONSIVE FOUNDATION
+   Mobile-first approach
+   ============================================= */
+
+/* Prevent horizontal overflow at all sizes */
+html, body {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 @layer base {
   body {
     background-color: #08080a;
     color: #e5e7eb;
     font-family: var(--font-sans);
+    /* Safe area insets for notched devices (iPhone X+) */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Ensure images & videos never bust their container */
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Remove fixed widths that could cause horizontal scroll */
+  * {
+    box-sizing: border-box;
   }
 }
 
-/* Luxury custom animations */
+/* =============================================
+   TOUCH TARGET UTILITY
+   Minimum 44x44px hit area on all interactive elements
+   ============================================= */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Bottom nav safe area for iOS */
+.mobile-nav-safe {
+  padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+}
+
+/* =============================================
+   FLUID TYPE SCALE
+   Headings shrink gracefully, body never < 14px
+   ============================================= */
+.text-fluid-hero {
+  font-size: clamp(1.75rem, 5vw, 3.75rem);
+  line-height: 1.1;
+}
+
+.text-fluid-h2 {
+  font-size: clamp(1.25rem, 3vw, 2rem);
+  line-height: 1.2;
+}
+
+.text-fluid-h3 {
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
+  line-height: 1.3;
+}
+
+.text-fluid-body {
+  font-size: clamp(0.875rem, 1.5vw, 1rem);
+  line-height: 1.6;
+}
+
+/* =============================================
+   LUXURY CUSTOM ANIMATIONS
+   ============================================= */
 @keyframes goldPulse {
   0%, 100% {
     text-shadow: 0 0 4px rgba(212, 175, 55, 0.4), 0 0 12px rgba(212, 175, 55, 0.2);
@@ -55,7 +123,36 @@
   animation: slowShimmer 6s linear infinite;
 }
 
-/* Beautiful custom scrollbars for premium look */
+/* Slide-up animation for mobile More sheet */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.slide-up-enter {
+  animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* =============================================
+   CUSTOM SCROLLBARS — Premium look
+   ============================================= */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -72,4 +169,39 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #d4af37;
+}
+
+/* =============================================
+   MOBILE BOTTOM SHEET (for modals on mobile)
+   ============================================= */
+.modal-sheet-mobile {
+  /* On mobile: full-screen bottom sheet */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 92dvh;
+  overflow-y: auto;
+  border-radius: 1.25rem 1.25rem 0 0;
+  z-index: 60;
+}
+
+@media (min-width: 768px) {
+  .modal-sheet-mobile {
+    /* On tablet+: restore to centered dialog behavior */
+    position: relative;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    max-height: none;
+    border-radius: 1rem;
+  }
+}
+
+/* =============================================
+   PLAN CARD — prevent overflow in tight grids
+   ============================================= */
+.plan-card-content {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
