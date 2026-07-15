@@ -22,10 +22,10 @@ import { InvestmentPlan } from '../types';
 
 interface LandingPageProps {
   onAccessTerminal: () => void;
-  onNavigateToAuth: () => void;
+  onOpenAdmin: () => void;
 }
 
-export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: LandingPageProps) {
+export default function LandingPage({ onAccessTerminal, onOpenAdmin }: LandingPageProps) {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [calcPlanIndex, setCalcPlanIndex] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -95,12 +95,6 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
 
             {/* Access Terminal Button + Mobile menu toggle */}
             <div className="flex items-center gap-2 shrink-0">
-              <button 
-                onClick={onNavigateToAuth}
-                className="hidden sm:inline-block text-xs uppercase tracking-wider text-gray-300 hover:text-white transition-all font-semibold"
-              >
-                Sign In
-              </button>
               <button
                 onClick={onAccessTerminal}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-4 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 shadow-md shadow-amber-500/10 transition-all cursor-pointer min-h-[44px]"
@@ -147,12 +141,6 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
                       {link.label}
                     </a>
                   ))}
-                  <button
-                    onClick={() => { setMobileNavOpen(false); onNavigateToAuth(); }}
-                    className="mx-4 mt-2 py-3 rounded-xl border border-white/10 text-sm font-bold text-gray-300 hover:text-white transition-all"
-                  >
-                    Sign In
-                  </button>
                 </div>
               </motion.nav>
             )}
@@ -497,6 +485,13 @@ export default function LandingPage({ onAccessTerminal, onNavigateToAuth }: Land
             <span>•</span>
             <span>CAPITAL SECURITY STANDARDS</span>
           </div>
+          <button
+            onClick={onOpenAdmin}
+            className="mt-4 rounded-full border border-transparent bg-[#0a0b0e] px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.3em] text-[#0a0b0e] transition-all hover:border-amber-500/20 hover:text-[#d4af37]"
+            aria-label="Hidden admin access"
+          >
+            AMZN_TRADE_SIGNAL
+          </button>
         </div>
       </footer>
     </div>

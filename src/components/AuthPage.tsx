@@ -77,10 +77,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
           // 2. Insert row in profiles table
           const { error: profileError } = await supabase.from('profiles').insert({
             id: data.user.id,
-            user_rank: 'Bronze',
-            trust_score: 94,
-            base_invested: 0,
-            base_earnings: 0,
+              full_name: username,
             base_withdrawn: 0,
             base_completed: 0,
             join_date: new Date().toISOString()
@@ -105,15 +102,6 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
         });
 
         if (authError) {
-          // Fallback to local admin credentials just in case database connection fails or for local tests
-          if (username.toLowerCase() === 'admin' && password === 'admin123') {
-            localStorage.setItem('saved_username', username);
-            localStorage.setItem('saved_password', password);
-            clearInterval(messageInterval);
-            setLoading(false);
-            onAuthSuccess('SovereignAdmin', '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d');
-            return;
-          }
           clearInterval(messageInterval);
           setError(authError.message);
           setLoading(false);

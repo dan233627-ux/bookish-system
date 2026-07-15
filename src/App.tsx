@@ -36,12 +36,17 @@ import DailyOfferModal, { DAILY_OFFER_PLAN } from './components/DailyOfferModal'
 import Profiles from './components/Profiles';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
+import AdminLoginPage from './components/AdminLoginPage';
+import AdminApprovalPage from './components/AdminApprovalPage';
 import PurchaseConfirmation from './components/PurchaseConfirmation';
 import { supabase } from './utils/supabase/client';
 
+const ADMIN_PASSWORD = 'RoyalAdmin2026!';
+
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'landing' | 'auth' | 'dashboard' | 'confirmation'>('landing');
+  const [currentPage, setCurrentPage] = useState<'landing' | 'auth' | 'admin-login' | 'admin-approval' | 'dashboard' | 'confirmation'>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<{ username: string; walletAddress: string } | null>(null);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'plans' | 'profiles' | 'community' | 'support' | 'calculator'>('dashboard');
@@ -76,6 +81,11 @@ export default function App() {
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash;
+      if (hash === '#admin') {
+        setCurrentPage('admin-login');
+        return;
+      }
+
       if (hash === '#calculator') {
         setActiveTab('calculator');
       } else if (hash === '#plans') {
@@ -257,6 +267,11 @@ export default function App() {
     });
   };
 
+  const handleAdminSuccess = () => {
+    setIsAdminAuthenticated(true);
+    setCurrentPage('admin-approval');
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.setItem('royal_logged_out', 'true');
@@ -355,9 +370,14 @@ export default function App() {
         screenshotBase64
       }),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log('[Telegram Alert System]', data.message);
+      .then(async (res) => {
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          console.log('[Telegram Alert System]', data.message);
+        } catch {
+          console.warn('[Telegram Alert System] response is not JSON:', text);
+        }
       })
       .catch((err) => {
         console.error('[Telegram Alert Error]', err);
@@ -419,10 +439,7 @@ export default function App() {
 
   if (currentPage === 'landing') {
     return (
-      <LandingPage 
-        onAccessTerminal={handleAccessTerminal} 
-        onNavigateToAuth={() => setCurrentPage('auth')} 
-      />
+      <LandingPage onAccessTerminal={handleAccessTerminal} onOpenAdmin={() => setCurrentPage('admin-login')} />
     );
   }
 
@@ -431,6 +448,28 @@ export default function App() {
       <AuthPage 
         onAuthSuccess={handleAuthSuccess} 
         onBackToLanding={() => setCurrentPage('landing')} 
+      />
+    );
+  }
+
+  if (currentPage === 'admin-login') {
+    return (
+      <AdminLoginPage
+        onBack={() => setCurrentPage('landing')}
+        onLoginSuccess={handleAdminSuccess}
+        adminPassword={ADMIN_PASSWORD}
+      />
+    );
+  }
+
+  if (currentPage === 'admin-approval') {
+    return isAdminAuthenticated ? (
+      <AdminApprovalPage onBack={() => setCurrentPage('landing')} />
+    ) : (
+      <AdminLoginPage
+        onBack={() => setCurrentPage('landing')}
+        onLoginSuccess={handleAdminSuccess}
+        adminPassword={ADMIN_PASSWORD}
       />
     );
   }
