@@ -7,7 +7,13 @@ const jsonHeaders = {
 };
 
 export default async function handler(request: Request): Promise<Response> {
+  console.log('[Vercel Notify] incoming request', request.method, request.url);
+  const requestHeaders: any = {};
+  request.headers.forEach((value, key) => { requestHeaders[key] = value; });
+  console.log('[Vercel Notify] request headers', requestHeaders);
+
   if (request.method !== 'POST') {
+    console.warn('[Vercel Notify] invalid method', request.method);
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: jsonHeaders,
@@ -17,7 +23,9 @@ export default async function handler(request: Request): Promise<Response> {
   let body: any;
   try {
     body = await request.json();
+    console.log('[Vercel Notify] request body', body);
   } catch (error) {
+    console.error('[Vercel Notify] invalid JSON body', error);
     return new Response(JSON.stringify({ error: 'Invalid JSON body.' }), {
       status: 400,
       headers: jsonHeaders,

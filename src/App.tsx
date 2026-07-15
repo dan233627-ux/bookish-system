@@ -358,34 +358,52 @@ export default function App() {
 
     // Dispatch direct notification & screenshot to user's configured Telegram Bot
     const notifyUrl = '/api/notify-deposit';
+    const notifyBody = {
+      username,
+      planName: plan.categoryLabel,
+      amount: plan.capital,
+      paymentMethod,
+      screenshotBase64,
+    };
+
+    console.group('[Telegram Alert System] notify-deposit request');
+    console.log('URL:', notifyUrl);
+    console.log('Method:', 'POST');
+    console.log('Body:', notifyBody);
+    console.groupEnd();
+
     fetch(notifyUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        username,
-        planName: plan.categoryLabel,
-        amount: plan.capital,
-        paymentMethod,
-        screenshotBase64
-      }),
+      body: JSON.stringify(notifyBody),
     })
       .then(async (res) => {
         const text = await res.text();
+        console.group('[Telegram Alert System] notify-deposit response');
+        console.log('Status:', res.status);
+        console.log('OK:', res.ok);
+        console.log('Headers:', Array.from(res.headers.entries()));
+        console.log('Raw body:', text);
+
         if (!res.ok) {
-          console.warn('[Telegram Alert System] notification route unavailable or returned error:', res.status, text);
+          console.warn('[Telegram Alert System] notification route returned error or was unavailable:', res.status, text);
+          console.groupEnd();
           return;
         }
+
         try {
           const data = JSON.parse(text);
-          console.log('[Telegram Alert System]', data.message ?? data.error ?? 'No message returned');
-        } catch {
-          console.warn('[Telegram Alert System] response is not JSON:', text);
+          console.log('[Telegram Alert System] parsed response:', data);
+        } catch (parseError) {
+          console.warn('[Telegram Alert System] response is not valid JSON:', parseError, text);
         }
+
+        console.groupEnd();
       })
       .catch((err) => {
-        console.warn('[Telegram Alert Error] Unable to reach notification service:', err);
+        console.error('[Telegram Alert Error] Unable to reach notification service:', err);
       });
   };
 
