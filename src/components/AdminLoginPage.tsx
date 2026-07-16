@@ -44,14 +44,11 @@ export default function AdminLoginPage({ onBack, onLoginSuccess, adminPassword }
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.3em] text-[#d4af37]">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Admin Access
+              Admin
             </div>
             <h1 className="text-3xl font-black uppercase tracking-tight text-white">
-              Approval Console
+              Access
             </h1>
-            <p className="text-sm text-gray-400">
-              Use the admin password to access the pending transaction approval portal.
-            </p>
           </div>
 
           {error && (
@@ -63,7 +60,7 @@ export default function AdminLoginPage({ onBack, onLoginSuccess, adminPassword }
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <label className="text-[10px] font-mono uppercase tracking-[0.3em] text-gray-500">
-                Admin password
+                Password
               </label>
               <div className="relative">
                 <input
@@ -88,7 +85,7 @@ export default function AdminLoginPage({ onBack, onLoginSuccess, adminPassword }
               className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-600 to-yellow-400 px-4 py-3 text-sm font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 transition-all"
             >
               <Check className="h-4 w-4" />
-              Enter Approval Portal
+              Enter
             </button>
           </form>
         </div>

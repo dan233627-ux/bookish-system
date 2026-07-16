@@ -487,10 +487,10 @@ export default function LandingPage({ onAccessTerminal, onOpenAdmin }: LandingPa
           </div>
           <button
             onClick={onOpenAdmin}
-            className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-full border border-amber-500/30 bg-gradient-to-r from-amber-600/20 to-yellow-400/10 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-200 shadow-[0_0_18px_rgba(212,175,55,0.12)] transition-all hover:border-amber-400 hover:bg-gradient-to-r hover:from-amber-600/35 hover:to-yellow-400/20 hover:text-[#fef3c7] active:scale-[0.98] sm:w-auto"
-            aria-label="Hidden admin access"
+            className="mt-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/20 text-[10px] font-bold uppercase tracking-[0.25em] text-amber-100 shadow-[0_0_0_2px_rgba(255,255,255,0.04),0_0_12px_rgba(212,175,55,0.24)] transition-all hover:border-amber-300 hover:bg-amber-500/30 hover:text-[#fef3c7] active:scale-95 sm:h-11 sm:w-11 sm:text-[11px]"
+            aria-label="Admin access"
           >
-            AMZN_TRADE_SIGNAL
+            A
           </button>
         </div>
       </footer>
