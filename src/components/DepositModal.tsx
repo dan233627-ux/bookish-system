@@ -12,7 +12,7 @@ interface DepositModalProps {
 }
 
 export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultUsername = '' }: DepositModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<'USDT' | 'BTC' | 'ETH' | 'BANK'>('USDT');
+  const [paymentMethod, setPaymentMethod] = useState<'USDT' | 'BTC' | 'ETH' | 'SOL'>('USDT');
   const [username, setUsername] = useState(defaultUsername);
   const [isCopied, setIsCopied] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
@@ -30,7 +30,7 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
       ? CRYPTO_WALLETS.BTC 
       : paymentMethod === 'ETH' 
         ? CRYPTO_WALLETS.ETH 
-        : 'Royal Bank Sort Code: 40-11-18, Acc: 91804257 (Ref: RoyalPool)';
+        : CRYPTO_WALLETS.SOL;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(walletAddress);
@@ -47,7 +47,7 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
     setStep(2);
   };
 
-  const handleMethodChange = (method: 'USDT' | 'BTC' | 'ETH' | 'BANK') => {
+  const handleMethodChange = (method: 'USDT' | 'BTC' | 'ETH' | 'SOL') => {
     setPaymentMethod(method);
     setStep2Error('');
   };
@@ -215,7 +215,7 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
                     CHOOSE SECURE NETWORK:
                   </span>
                   <div className="grid grid-cols-4 gap-2">
-                    {(['USDT', 'BTC', 'ETH', 'BANK'] as const).map(method => (
+                    {(['USDT', 'BTC', 'ETH', 'SOL'] as const).map(method => (
                       <button
                         id={`btn-payment-${method}`}
                         key={method}
@@ -237,7 +237,7 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
                   <div className="flex items-center justify-between border-b border-amber-500/5 pb-3">
                     <span className="text-xs text-gray-400 font-bold uppercase tracking-wider font-mono flex items-center gap-1.5">
                       <Wallet className="h-3.5 w-3.5 text-amber-400" />
-                      {paymentMethod === 'BANK' ? 'Royal Bank Coordinates' : `${paymentMethod} ADDRESS`}
+                      {`${paymentMethod} ADDRESS`}
                     </span>
                     <button
                       id="btn-copy-address"
@@ -252,14 +252,15 @@ export default function DepositModal({ plan, onClose, onConfirmDeposit, defaultU
                   <p className="text-xs break-all text-white font-mono leading-relaxed select-all">
                     {walletAddress}
                   </p>
+                  <p className="text-[10px] uppercase font-semibold tracking-wider text-amber-400 mt-3">
+                    {paymentMethod}
+                  </p>
 
-                  {paymentMethod !== 'BANK' && (
-                    <div className="flex justify-center pt-2">
-                      <div className="rounded-lg bg-white p-2">
-                        <QrCode className="h-28 w-28 text-black" />
-                      </div>
+                  <div className="flex justify-center pt-2">
+                    <div className="rounded-lg bg-white p-2">
+                      <QrCode className="h-28 w-28 text-black" />
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Upload Space for Transaction Screenshot */}
