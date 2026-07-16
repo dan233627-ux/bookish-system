@@ -291,6 +291,30 @@ export default function App() {
   };
 
   // Handle confirmed simulated deposit
+  const SCREENSHOT_BUCKET = import.meta.env.VITE_SUPABASE_SCREENSHOT_BUCKET || 'deposit-screenshots';
+
+  const uploadScreenshotToStorage = async (screenshotBase64: string, userId: string) => {
+    try {
+      const blob = await fetch(screenshotBase64).then((res) => res.blob());
+      const extension = blob.type.split('/')[1] || 'png';
+      const filePath = `deposits/${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(SCREENSHOT_BUCKET)
+        .upload(filePath, blob, { contentType: blob.type });
+
+      if (uploadError || !uploadData) {
+        console.warn('[Screenshot Upload] failed to upload screenshot to storage', uploadError);
+        return null;
+      }
+
+      const { data: publicUrlData } = supabase.storage.from(SCREENSHOT_BUCKET).getPublicUrl(filePath);
+      return publicUrlData?.publicUrl || null;
+    } catch (error) {
+      console.warn('[Screenshot Upload] unexpected error', error);
+      return null;
+    }
+  };
+
   const handleConfirmDeposit = async (
     username: string, 
     plan: InvestmentPlan, 
@@ -299,6 +323,14 @@ export default function App() {
   ) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    let screenshotUrl: string | null = null;
+    if (screenshotBase64) {
+      screenshotUrl = await uploadScreenshotToStorage(screenshotBase64, user.id);
+      if (screenshotUrl) {
+        console.log('[Screenshot Upload] saved screenshot to storage', screenshotUrl);
+      }
+    }
 
     const now = new Date();
     const end = getInvestmentEndDate(now, plan.durationHours);
@@ -314,7 +346,7 @@ export default function App() {
       end_date: end.toISOString(),
       duration_hours: plan.durationHours,
       status: 'pending',
-      screenshot_url: screenshotBase64 || null,
+      screenshot_url: screenshotUrl || screenshotBase64 || null,
       payment_method: paymentMethod || 'Crypto'
     };
 
@@ -363,6 +395,7 @@ export default function App() {
       planName: plan.categoryLabel,
       amount: plan.capital,
       paymentMethod,
+      screenshotUrl,
       screenshotBase64,
     };
 
