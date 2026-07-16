@@ -9,6 +9,7 @@ interface AdminApprovalPageProps {
 interface PendingInvestmentRecord {
   id: string;
   user_id: string;
+  username?: string | null;
   plan_label: string;
   category: string;
   capital: number;
@@ -152,7 +153,7 @@ export default function AdminApprovalPage({ onBack }: AdminApprovalPageProps) {
 
                   <div className="mt-3 rounded-xl border border-white/10 bg-[#0c0d12]/70 p-3 text-sm text-gray-300">
                     <span className="block text-[9px] font-mono font-bold uppercase tracking-[0.3em] text-gray-500">User</span>
-                    <span className="mt-1 block truncate font-semibold text-white">{item.user_id}</span>
+                    <span className="mt-1 block truncate font-semibold text-white">{item.username?.trim() || item.user_id}</span>
                   </div>
 
                   {item.payment_method && (

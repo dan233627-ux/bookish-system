@@ -29,6 +29,7 @@ create index if not exists idx_profiles_trust_score on public.profiles(trust_sco
 create table if not exists public.investments (
   id bigserial primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
+  username text,
   plan_id text not null,
   plan_label text not null,
   category text not null check (category in ('24h','2day','weekly')),

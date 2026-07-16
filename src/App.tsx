@@ -337,6 +337,7 @@ export default function App() {
 
     const newDbInvestment = {
       user_id: user.id,
+      username: username.trim() || null,
       plan_id: plan.id,
       plan_label: plan.categoryLabel,
       category: plan.category,
