@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ActiveInvestment as ActiveInvestmentType } from '../types';
-import { Coins, Flame, Clock, CheckCircle2, DollarSign } from 'lucide-react';
+import { Coins, Flame, Clock, CheckCircle2, DollarSign, ShieldCheck } from 'lucide-react';
 
 interface ActiveInvestmentProps {
   key?: string;
   investment: ActiveInvestmentType;
-  onClaim: (id: string, feeCurrency: 'TRX' | 'USDT' | 'BTC' | 'ETH') => void;
+  onClaim: (investment: ActiveInvestmentType) => void;
 }
 
 export default function ActiveInvestment({ investment, onClaim }: ActiveInvestmentProps) {
   const [currentProgress, setCurrentProgress] = useState(0);
   const [currentEarning, setCurrentEarning] = useState(investment.status === 'pending' ? 0 : investment.capital);
-  const [feeCurrency, setFeeCurrency] = useState<'TRX' | 'USDT' | 'BTC' | 'ETH'>('TRX');
   const [timeRemaining, setTimeRemaining] = useState('');
 
   useEffect(() => {
@@ -62,11 +61,10 @@ export default function ActiveInvestment({ investment, onClaim }: ActiveInvestme
 
   const isPending = investment.status === 'pending';
   const isCompleted = !isPending && currentProgress >= 100;
-  const TRON_WITHDRAWAL_FEE = 80;
-  const MANAGEMENT_FEE_RATE = 0.03;
-  const managementFee = Number((investment.roi * MANAGEMENT_FEE_RATE).toFixed(2));
-  const withdrawalFeeTotal = Number((TRON_WITHDRAWAL_FEE + managementFee).toFixed(2));
-  const expectedNetPayout = Number((investment.roi - withdrawalFeeTotal).toFixed(2));
+  const isWithdrawPending = investment.status === 'withdraw_pending';
+  const isWithdrawUnderReview = investment.status === 'withdraw_under_review';
+  const withdrawalFeeAmount = Number(investment.capital.toFixed(2));
+  const expectedNetPayout = Number(investment.roi.toFixed(2));
 
   return (
     <div
@@ -100,6 +98,11 @@ export default function ActiveInvestment({ investment, onClaim }: ActiveInvestme
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-400 font-mono">
             <Clock className="h-3.5 w-3.5" />
             PENDING VERIFICATION
+          </span>
+        ) : isWithdrawUnderReview ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-400 font-mono">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            WITHDRAWAL UNDER REVIEW
           </span>
         ) : isCompleted ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-400 font-mono">
@@ -179,46 +182,6 @@ export default function ActiveInvestment({ investment, onClaim }: ActiveInvestme
         </div>
       </div>
 
-      {/* Fee summary */}
-      {isCompleted && (
-        <div className="mt-5 rounded-2xl border border-emerald-500/10 bg-[#0e1611]/70 p-4 text-xs text-gray-300">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-semibold text-emerald-300 uppercase tracking-[0.18em]">Withdraw Fee Currency</p>
-              <p className="text-[11px] text-gray-400">Choose the crypto you want to pay the fee with.</p>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {(['TRX', 'USDT', 'BTC', 'ETH'] as const).map((method) => (
-                <button
-                  key={method}
-                  onClick={() => setFeeCurrency(method)}
-                  className={`rounded-lg px-2 py-1 text-[10px] font-semibold uppercase transition-all ${
-                    feeCurrency === method
-                      ? 'bg-emerald-500/15 border border-emerald-400 text-emerald-300'
-                      : 'bg-[#121318] border border-emerald-500/10 text-gray-300 hover:border-emerald-400'
-                  }`}
-                >
-                  {method}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 text-[11px] sm:grid-cols-3">
-            <div className="rounded-xl bg-[#121318] p-3">
-              <p className="text-gray-400">Network fee</p>
-              <p className="mt-1 font-semibold text-white">${TRON_WITHDRAWAL_FEE.toFixed(0)}</p>
-            </div>
-            <div className="rounded-xl bg-[#121318] p-3">
-              <p className="text-gray-400">Management fee</p>
-              <p className="mt-1 font-semibold text-white">£{managementFee.toFixed(2)}</p>
-            </div>
-            <div className="rounded-xl bg-[#121318] p-3">
-              <p className="text-gray-400">Estimated net payout</p>
-              <p className="mt-1 font-semibold text-emerald-300">£{expectedNetPayout.toFixed(2)}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Claims triggers */}
       <div className="mt-6">
@@ -233,10 +196,21 @@ export default function ActiveInvestment({ investment, onClaim }: ActiveInvestme
         ) : isCompleted ? (
           <button
             id={`btn-claim-payout-${investment.id}`}
-            onClick={() => onClaim(investment.id, feeCurrency)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 py-3 text-xs font-extrabold uppercase tracking-widest text-[#000] hover:brightness-110 cursor-pointer shadow-lg shadow-emerald-500/10"
+            onClick={() => onClaim(investment)}
+            disabled={isPending}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-extrabold uppercase tracking-widest ${
+              isWithdrawPending || isWithdrawUnderReview
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-[#000] hover:brightness-110 cursor-pointer shadow-lg shadow-emerald-500/10'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-500 text-[#000] hover:brightness-110 cursor-pointer shadow-lg shadow-emerald-500/10'
+            }`}
           >
-            <span>WITHDRAW ROYAL PAYOUT</span>
+            <span>
+              {isWithdrawUnderReview
+                ? 'WITHDRAWAL UNDER REVIEW'
+                : isWithdrawPending
+                ? 'WITHDRAWAL PENDING'
+                : 'SUBMIT WITHDRAWAL REQUEST'}
+            </span>
           </button>
         ) : (
           <button

@@ -38,9 +38,11 @@ create table if not exists public.investments (
   duration_hours integer not null,
   start_date timestamptz not null,
   end_date timestamptz not null,
-  status text not null default 'pending' check (status in ('pending','active','completed','claimed')),
+  status text not null default 'pending' check (status in ('pending','active','completed','claimed','withdraw_pending','withdraw_under_review')),
   screenshot_url text,
   payment_method text,
+  withdrawal_fee_currency text check (withdrawal_fee_currency in ('TRX','USDT','BTC','ETH')),
+  payout_wallet_address text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -62,7 +64,7 @@ BEGIN
 
   ALTER TABLE public.investments
     ADD CONSTRAINT investments_status_check
-    CHECK (status in ('pending','active','completed','claimed'));
+    CHECK (status in ('pending','active','completed','claimed','withdraw_pending','withdraw_under_review'));
 EXCEPTION
   WHEN duplicate_object THEN
     NULL;

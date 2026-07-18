@@ -331,6 +331,13 @@ export default function Profiles({
             <p className="text-xs text-gray-400">View investment opportunities</p>
           </button>
         </div>
+          <button 
+            onClick={() => { try { window.location.hash = '#customer-support'; } catch (e) {} }}
+            className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/25 hover:border-emerald-500/50 transition-all cursor-pointer text-left group"
+          >
+            <p className="text-sm font-bold text-emerald-400 mb-1">Customer Support</p>
+            <p className="text-xs text-gray-400">Open secure support chat</p>
+          </button>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { ArrowLeft, Lock, ShieldCheck, Check, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Lock, ShieldCheck, Check, Eye, EyeOff, MessageSquareText } from 'lucide-react';
 
 interface AdminLoginPageProps {
   onBack: () => void;
@@ -29,26 +29,43 @@ export default function AdminLoginPage({ onBack, onLoginSuccess, adminPassword }
     onLoginSuccess();
   };
 
+  const handleSubmitToMessages = (event?: FormEvent) => {
+    if (event && 'preventDefault' in event) (event as FormEvent).preventDefault();
+    setError(null);
+
+    if (!password) {
+      setError('Please enter the admin password.');
+      return;
+    }
+
+    if (password !== adminPassword) {
+      setError('Invalid admin password.');
+      return;
+    }
+
+    // Request admin messages view after successful auth
+    try {
+      window.location.hash = '#admin-messages';
+    } catch (e) {
+      // ignore
+    }
+    onLoginSuccess();
+  };
+
   return (
     <div className="min-h-screen bg-[#08080a] text-gray-100 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-3xl border border-amber-500/15 bg-[#0c0d12]/90 p-6 shadow-2xl shadow-amber-500/10 backdrop-blur-xl">
         <button
           onClick={onBack}
           className="mb-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#d4af37]"
+          aria-label="Back"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
         </button>
 
         <div className="space-y-5">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.3em] text-[#d4af37]">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Admin
-            </div>
-            <h1 className="text-3xl font-black uppercase tracking-tight text-white">
-              Access
-            </h1>
+            <h1 className="text-3xl font-black uppercase tracking-tight text-white">&nbsp;</h1>
           </div>
 
           {error && (
@@ -59,9 +76,7 @@ export default function AdminLoginPage({ onBack, onLoginSuccess, adminPassword }
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-[10px] font-mono uppercase tracking-[0.3em] text-gray-500">
-                Password
-              </label>
+              <label className="sr-only">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -87,6 +102,8 @@ export default function AdminLoginPage({ onBack, onLoginSuccess, adminPassword }
               <Check className="h-4 w-4" />
               Enter
             </button>
+
+            {/* Open Messages Hub button removed as requested */}
           </form>
         </div>
       </div>

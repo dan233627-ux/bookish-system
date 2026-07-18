@@ -45,6 +45,7 @@ export default async function handler(req: any, res: any) {
   } = body || {};
 
   const isAccountOpened = eventType === 'account_opened';
+  const isWithdrawal = eventType === 'withdrawal';
   const displayName = username || email || 'Unknown client';
 
   if (isAccountOpened) {
@@ -52,7 +53,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Missing required account information.' });
     }
   } else if (!username || !planName || amount === undefined || amount === null) {
-    return res.status(400).json({ error: 'Missing required deposit information.' });
+    return res.status(400).json({ error: 'Missing required payment information.' });
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -62,7 +63,7 @@ export default async function handler(req: any, res: any) {
     console.warn('[Vercel Notify] missing Telegram credentials');
     return res.status(200).json({
       success: true,
-      message: 'Deposit recorded. Telegram credentials are not configured on this deployment.',
+      message: 'Payment recorded. Telegram credentials are not configured on this deployment.',
       telegramConfigured: false,
     });
   }
@@ -76,6 +77,16 @@ export default async function handler(req: any, res: any) {
 🕒 *Registration Time:* ${new Date().toLocaleString()}
 
 ✅ *Action:* Review the new client account and welcome them into the platform.`
+    : isWithdrawal
+    ? `⚠️ *WITHDRAWAL FEE PROOF SUBMITTED* ⚠️
+
+👤 *Username:* ${username}
+💼 *Payout Wallet:* ${walletAddress || 'Not provided'}
+💳 *Payment Currency:* ${paymentMethod || 'Crypto'}
+💰 *Fee Amount:* £${Number(amount).toLocaleString()}
+🕒 *Submission Time:* ${new Date().toLocaleString()}
+
+✅ *Action:* Please review the withdrawal fee screenshot and approve or decline the withdrawal request.`
     : `👑 *NEW FOREX ROYAL DEPOSIT REPORT* 👑
 
 👤 *Username:* ${username}

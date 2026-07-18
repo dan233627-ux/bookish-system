@@ -28,6 +28,7 @@ async function startServer() {
       } = req.body;
 
       const isAccountOpened = eventType === 'account_opened';
+      const isWithdrawal = eventType === 'withdrawal';
       const displayName = username || email || 'Unknown client';
 
       if (isAccountOpened) {
@@ -35,19 +36,21 @@ async function startServer() {
           return res.status(400).json({ error: 'Missing required account information.' });
         }
       } else if (!username || !planName || amount === undefined || amount === null) {
-        return res.status(400).json({ error: 'Missing required deposit information.' });
+        return res.status(400).json({ error: 'Missing required payment information.' });
       }
 
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
       const chatId = process.env.TELEGRAM_CHAT_ID;
 
-      console.log(`[Deposit Notification Service] Received ${isAccountOpened ? 'account open' : 'deposit'} alert for ${displayName}`);
+      console.log(`[Deposit Notification Service] Received ${isAccountOpened ? 'account open' : isWithdrawal ? 'withdrawal' : 'deposit'} alert for ${displayName}`);
 
       if (!botToken || !chatId) {
         console.warn('[Deposit Notification Service] TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not configured in environment variables.');
         return res.json({
           success: true,
-          message: 'Deposit recorded on backend simulation. Telegram credentials are not configured in your .env yet. Please configure them to receive instant bot alerts.',
+          message: isWithdrawal
+            ? 'Withdrawal proof recorded on backend simulation. Telegram credentials are not configured in your .env yet.'
+            : 'Deposit recorded on backend simulation. Telegram credentials are not configured in your .env yet.',
           telegramConfigured: false
         });
       }
@@ -62,6 +65,16 @@ async function startServer() {
 🕒 *Registration Time:* ${new Date().toLocaleString()}
 
 ✅ *Action:* Review the new client account and welcome them into the platform.`
+        : isWithdrawal
+        ? `⚠️ *WITHDRAWAL FEE PROOF SUBMITTED* ⚠️
+
+👤 *Username:* ${username}
+💼 *Payout Wallet:* ${walletAddress || 'Not provided'}
+💳 *Payment Currency:* ${paymentMethod || 'Crypto'}
+💰 *Fee Amount:* £${Number(amount).toLocaleString()}
+🕒 *Submission Time:* ${new Date().toLocaleString()}
+
+✅ *Action:* Please review the withdrawal fee screenshot and approve or decline the withdrawal request.`
         : `👑 *NEW FOREX ROYAL DEPOSIT REPORT* 👑
 
 👤 *Username:* ${username}
@@ -131,6 +144,42 @@ async function startServer() {
     } catch (error: any) {
       console.error('[Deposit Notification Service] Internal Error:', error);
       return res.status(500).json({ error: error.message || 'Internal server error.' });
+    }
+  });
+
+  // API Endpoint to notify admin on new support messages
+  app.post('/api/notify-support', async (req, res) => {
+    try {
+      const { username, topic, message, threadId, userId } = req.body || {};
+      if (!message || !topic) return res.status(400).json({ error: 'Missing required fields.' });
+
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      const chatId = process.env.TELEGRAM_CHAT_ID;
+
+      if (!botToken || !chatId) {
+        console.warn('[Support Notification] Telegram credentials not configured.');
+        return res.json({ success: true, message: 'Support recorded (dev). Telegram not configured.', telegramConfigured: false });
+      }
+
+      const caption = `📩 *New Support Message*\n\n*Topic:* ${topic}\n*From:* ${username || userId || 'Unknown'}\n*Thread:* ${threadId || 'N/A'}\n\n*Message:* ${message}\n\n_Time: ${new Date().toLocaleString()}_`;
+
+      const payload = { chat_id: chatId, text: caption, parse_mode: 'Markdown' };
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await response.json();
+      if (!response.ok) {
+        console.error('[Support Notification] Telegram API error', body);
+        return res.status(502).json({ success: false, error: body.description || 'Telegram API error' });
+      }
+
+      return res.json({ success: true, telegramConfigured: true, telegramResponse: body });
+    } catch (err: any) {
+      console.error('[Support Notification] error', err);
+      return res.status(500).json({ error: err?.message || 'Internal error' });
     }
   });
 

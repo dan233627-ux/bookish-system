@@ -39,15 +39,24 @@ import AuthPage from './components/AuthPage';
 import AdminLoginPage from './components/AdminLoginPage';
 import AdminApprovalPage from './components/AdminApprovalPage';
 import PurchaseConfirmation from './components/PurchaseConfirmation';
+import ContactAdminPage from './components/ContactAdminPage';
+import AdminMessagesPage from './components/AdminMessagesPage';
+import WithdrawalPage from './components/WithdrawalPage';
+import WithdrawalFeePage from './components/WithdrawalFeePage';
 import { supabase } from './utils/supabase/client';
 
 const ADMIN_PASSWORD = 'RoyalAdmin2026!';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'landing' | 'auth' | 'admin-login' | 'admin-approval' | 'dashboard' | 'confirmation'>('landing');
+  const [currentPage, setCurrentPage] = useState<'landing' | 'auth' | 'admin-login' | 'admin-approval' | 'admin-messages' | 'customer-support' | 'dashboard' | 'confirmation' | 'withdrawal' | 'withdrawal-fee'>('landing');
+  const [withdrawalInvestment, setWithdrawalInvestment] = useState<ActiveInvestment | null>(null);
+  const [withdrawalCurrency, setWithdrawalCurrency] = useState<'TRX' | 'USDT' | 'BTC' | 'ETH'>('TRX');
+  const [withdrawalWallet, setWithdrawalWallet] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<{ username: string; walletAddress: string } | null>(null);
+  const [currentPayoutAddress, setCurrentPayoutAddress] = useState<string>('');
+  const [currentPayoutCurrency, setCurrentPayoutCurrency] = useState<'TRX' | 'USDT' | 'BTC' | 'ETH'>('TRX');
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'plans' | 'profiles' | 'community' | 'support' | 'calculator'>('dashboard');
   const [selectedPlan, setSelectedPlan] = useState<InvestmentPlan | null>(null);
@@ -62,12 +71,8 @@ export default function App() {
   const [mobileMoreOpen, setMobileMoreOpen] = useState<boolean>(false);
   const [isLoadingInvestments, setIsLoadingInvestments] = useState<boolean>(false);
 
-  const TRON_WITHDRAWAL_FEE_USD = 80;
-  const MANAGEMENT_FEE_RATE = 0.03;
-
-  const calculateManagementFee = (gross: number) => Number((gross * MANAGEMENT_FEE_RATE).toFixed(2));
-  const calculateTotalWithdrawalFees = (gross: number) => Number((TRON_WITHDRAWAL_FEE_USD + calculateManagementFee(gross)).toFixed(2));
-  const calculateNetWithdrawal = (gross: number) => Number((gross - calculateTotalWithdrawalFees(gross)).toFixed(2));
+  const calculateWithdrawalFee = (capital: number) => Number(capital.toFixed(2));
+  const calculateNetWithdrawal = (gross: number) => Number(gross.toFixed(2));
 
   const getInvestmentEndDate = (startDate: Date, durationHours: number) => {
     return new Date(startDate.getTime() + durationHours * 3600 * 1000);
@@ -82,6 +87,16 @@ export default function App() {
     const handleHash = () => {
       const hash = window.location.hash;
       if (hash === '#admin') {
+        setCurrentPage('admin-login');
+        return;
+      }
+
+      if (hash === '#customer-support') {
+        setCurrentPage('customer-support');
+        return;
+      }
+
+      if (hash === '#admin-messages') {
         setCurrentPage('admin-login');
         return;
       }
@@ -111,27 +126,44 @@ export default function App() {
   const loadUserInvestments = async (userId: string) => {
     setIsLoadingInvestments(true);
     try {
-      const { data, error } = await supabase
-        .from('investments')
-        .select('*')
-        .eq('user_id', userId)
-        .order('start_date', { ascending: false });
+      const [{ data: invData, error: invError }, { data: addrData, error: addrError }] = await Promise.all([
+        supabase
+          .from('investments')
+          .select('*')
+          .eq('user_id', userId)
+          .order('start_date', { ascending: false }),
+        supabase
+          .from('withdrawal_addresses')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ]);
 
-      if (error) {
-        console.error('Supabase fetch error:', error);
-        throw error;
+      if (invError) {
+        console.error('Supabase fetch error:', invError);
+        throw invError;
+      }
+      if (addrError) {
+        console.error('Supabase address fetch error:', addrError);
       }
 
-      if (data) {
-        const mapped = data.map((inv: any) => {
+      if (addrData) {
+        setCurrentPayoutAddress(addrData.address);
+        setCurrentPayoutCurrency(addrData.currency as 'TRX' | 'USDT' | 'BTC' | 'ETH');
+      }
+
+      if (invData) {
+        const mapped = invData.map((inv: any) => {
           const calculatedEndDate = inv.end_date
             ? inv.end_date
             : getInvestmentEndDate(new Date(inv.start_date), Number(inv.duration_hours)).toISOString();
           const normalizedStatus = inv.status === 'pending'
             ? 'pending'
-            : inv.status === 'active' && new Date(calculatedEndDate).getTime() <= Date.now()
-              ? 'completed'
-              : inv.status;
+            : inv.status === 'withdraw_pending'
+              ? 'withdraw_pending'
+              : inv.status === 'active' && new Date(calculatedEndDate).getTime() <= Date.now()
+                ? 'completed'
+                : inv.status;
 
           return {
             id: inv.id,
@@ -146,14 +178,17 @@ export default function App() {
             progress: 0,
             currentEarning: Number(inv.capital),
             status: normalizedStatus,
+            withdrawalFee: Number(inv.withdrawal_fee || 0),
+            withdrawalFeeCurrency: inv.withdrawal_fee_currency,
+            payoutWalletAddress: inv.payout_wallet_address,
+            screenshotUrl: inv.screenshot_url,
           };
         });
-        
-        // Sum claimed earnings dynamically using net payout after fees
+
         const claimedSum = mapped
           .filter(inv => inv.status === 'claimed')
           .reduce((sum, inv) => sum + calculateNetWithdrawal(Number(inv.roi)), 0);
-        
+
         console.log(`Successfully loaded ${mapped.length} investments for user ${userId}`);
         setTotalClaimedEarnings(claimedSum);
         setActiveInvestments(mapped);
@@ -269,6 +304,14 @@ export default function App() {
 
   const handleAdminSuccess = () => {
     setIsAdminAuthenticated(true);
+    try {
+      if (window.location.hash === '#admin-messages') {
+        setCurrentPage('admin-messages');
+        return;
+      }
+    } catch (e) {
+      // ignore
+    }
     setCurrentPage('admin-approval');
   };
 
@@ -280,6 +323,84 @@ export default function App() {
     setCurrentPage('landing');
     setActiveInvestments([]);
     setTotalClaimedEarnings(0);
+  };
+
+  const openWithdrawalPage = (investment: ActiveInvestment) => {
+    setWithdrawalInvestment(investment);
+
+    if (investment.status === 'withdraw_pending' || investment.status === 'withdraw_under_review') {
+      openWithdrawalFeePage(
+        investment.withdrawalFeeCurrency ?? currentPayoutCurrency ?? 'TRX',
+        investment.payoutWalletAddress ?? currentPayoutAddress ?? ''
+      );
+      return;
+    }
+
+    setWithdrawalCurrency(currentPayoutCurrency ?? investment.withdrawalFeeCurrency ?? 'TRX');
+    setWithdrawalWallet(currentPayoutAddress ?? investment.payoutWalletAddress ?? '');
+    setCurrentPage('withdrawal');
+  };
+
+  const openWithdrawalFeePage = (currency: 'TRX' | 'USDT' | 'BTC' | 'ETH', wallet: string) => {
+    setWithdrawalCurrency(currency);
+    setWithdrawalWallet(wallet);
+    setCurrentPage('withdrawal-fee');
+  };
+
+  const saveWithdrawalAddress = async (
+    userId: string,
+    currency: 'TRX' | 'USDT' | 'BTC' | 'ETH',
+    address: string
+  ) => {
+    const { error } = await supabase
+      .from('withdrawal_addresses')
+      .upsert(
+        {
+          user_id: userId,
+          currency,
+          address,
+        },
+        { onConflict: 'user_id' }
+      );
+
+    if (error) {
+      console.error('Failed to persist payout wallet address:', error);
+    } else {
+      setCurrentPayoutAddress(address);
+      setCurrentPayoutCurrency(currency);
+    }
+  };
+
+  const handleWithdrawalDetailsSubmit = async (
+    id: string,
+    feeCurrency: 'TRX' | 'USDT' | 'BTC' | 'ETH',
+    payoutWalletAddress: string
+  ) => {
+    const success = await submitWithdrawalRequest(id, feeCurrency, payoutWalletAddress);
+    if (success) {
+      const updatedInvestment = activeInvestments.find((inv: ActiveInvestment) => inv.id === id);
+      if (updatedInvestment) {
+        setWithdrawalInvestment(updatedInvestment);
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await saveWithdrawalAddress(user.id, feeCurrency, payoutWalletAddress);
+      }
+      openWithdrawalFeePage(feeCurrency, payoutWalletAddress);
+    }
+  };
+
+  const handleWithdrawalReviewSubmit = async (
+    id: string,
+    screenshotBase64: string,
+    feeCurrency: 'TRX' | 'USDT' | 'BTC' | 'ETH',
+    payoutWalletAddress: string
+  ) => {
+    const success = await submitWithdrawalReview(id, screenshotBase64, feeCurrency, payoutWalletAddress);
+    if (success) {
+      alert('Your withdrawal fee proof has been submitted and is now queued for review. Please wait while our team verifies it.');
+    }
+    return success;
   };
 
   const handleAccessTerminal = () => {
@@ -304,6 +425,9 @@ export default function App() {
 
       if (uploadError || !uploadData) {
         console.warn('[Screenshot Upload] failed to upload screenshot to storage', uploadError);
+        if (uploadError?.message?.toLowerCase().includes('row-level security')) {
+          console.warn('[Screenshot Upload] storage RLS policy appears to be blocking uploads. Confirm the bucket policy allows authenticated user uploads.');
+        }
         return null;
       }
 
@@ -376,7 +500,7 @@ export default function App() {
           status: data.status
         };
 
-        setActiveInvestments(prev => [mappedNew, ...prev]);
+        setActiveInvestments((prev: ActiveInvestment[]) => [mappedNew, ...prev]);
         setActiveTab('dashboard');
         setPurchaseConfirmation({
           plan,
@@ -398,6 +522,7 @@ export default function App() {
       paymentMethod,
       screenshotUrl,
       screenshotBase64,
+      eventType: 'deposit',
     };
 
     console.group('[Telegram Alert System] notify-deposit request');
@@ -441,56 +566,186 @@ export default function App() {
       });
   };
 
-  // Handle simulated withdrawal payout claim
-  const handleClaimPayout = async (id: string, feeCurrency: 'TRX' | 'USDT' | 'BTC' | 'ETH') => {
-    const investment = activeInvestments.find(inv => inv.id === id);
+  // Handle withdrawal request receipt and pending fee payment
+  const submitWithdrawalRequest = async (
+    id: string,
+    feeCurrency: 'TRX' | 'USDT' | 'BTC' | 'ETH',
+    payoutWalletAddress: string
+  ) => {
+    const investment = activeInvestments.find((inv: ActiveInvestment) => inv.id === id);
     if (investment) {
       const now = Date.now();
       const endTime = new Date(investment.endDate).getTime();
       if (endTime > now) {
         alert('This investment is not yet mature. Please wait until the maturity date before withdrawing.');
-        return;
+        return false;
       }
     }
 
+    if (!payoutWalletAddress.trim()) {
+      alert('Please provide your payout wallet address before submitting the withdrawal request.');
+      return false;
+    }
+
+    const fullUpdate = {
+      status: 'withdraw_pending',
+      withdrawal_fee_currency: feeCurrency,
+      payout_wallet_address: payoutWalletAddress,
+    };
+
+    const minimalUpdate = {
+      status: 'withdraw_pending',
+    };
+
+    const shouldRetryWithMinimalUpdate = (error: any) => {
+      return typeof error?.message === 'string' && /Could not find the|column .* does not exist/i.test(error.message);
+    };
+
     try {
-      const { data, error } = await supabase
+      let response = await supabase
         .from('investments')
-        .update({ status: 'claimed' })
+        .update(fullUpdate)
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (response.error && shouldRetryWithMinimalUpdate(response.error)) {
+        console.warn('[Withdrawal Request] retrying without schema-only fields due missing columns', response.error.message);
+        response = await supabase
+          .from('investments')
+          .update(minimalUpdate)
+          .eq('id', id)
+          .select()
+          .single();
+      }
+
+      if (response.error) throw response.error;
+      const data = response.data;
 
       if (data) {
         const grossPayout = Number(data.roi);
-        const managementFee = calculateManagementFee(grossPayout);
-        const totalFee = calculateTotalWithdrawalFees(grossPayout);
-        const netPayout = Math.max(grossPayout - totalFee, 0);
+        const netPayout = calculateNetWithdrawal(grossPayout);
+        const withdrawalFee = calculateWithdrawalFee(Number(data.capital));
 
-        const updated = activeInvestments.map(inv => {
+        const updated = activeInvestments.map((inv: ActiveInvestment) => {
           if (inv.id === id) {
             return {
               ...inv,
-              status: 'claimed' as const,
+              status: 'withdraw_pending' as const,
               progress: 100,
               currentEarning: grossPayout,
               netPayout,
-            };
+              withdrawalFee,
+              withdrawalFeeCurrency: feeCurrency,
+              payoutWalletAddress,
+            } as ActiveInvestment & { withdrawalFee: number; withdrawalFeeCurrency: 'TRX' | 'USDT' | 'BTC' | 'ETH'; payoutWalletAddress: string };
           }
           return inv;
         });
         setActiveInvestments(updated);
-        
-        const claimedSum = updated
-          .filter(inv => inv.status === 'claimed')
-          .reduce((sum, inv) => sum + (inv.netPayout ?? Number(inv.roi)), 0);
+        setCurrentPayoutAddress(payoutWalletAddress);
+        setCurrentPayoutCurrency(feeCurrency);
 
-        setTotalClaimedEarnings(claimedSum);
+        const newInvestment = updated.find((inv: ActiveInvestment) => inv.id === id);
+        if (newInvestment) {
+          setWithdrawalInvestment(newInvestment);
+        }
+        return true;
       }
     } catch (e) {
-      console.error('Failed to claim payout in Supabase', e);
+      console.error('Failed to submit withdrawal request in Supabase', e);
+      return false;
+    }
+    return false;
+  };
+
+  const submitWithdrawalReview = async (
+    id: string,
+    screenshotBase64: string,
+    feeCurrency: 'TRX' | 'USDT' | 'BTC' | 'ETH',
+    payoutWalletAddress: string
+  ) => {
+    if (!screenshotBase64) {
+      alert('Please attach your payment proof before submitting for review.');
+      return false;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Unable to identify user session. Please log in again.');
+        return false;
+      }
+
+      const screenshotUrl = await uploadScreenshotToStorage(screenshotBase64, user.id);
+      const { error } = await supabase
+        .from('investments')
+        .update({
+          status: 'withdraw_under_review',
+          screenshot_url: screenshotUrl || screenshotBase64,
+          withdrawal_fee_currency: feeCurrency,
+          payout_wallet_address: payoutWalletAddress,
+        })
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      const updated = activeInvestments.map((inv: ActiveInvestment) => {
+        if (inv.id === id) {
+          return {
+            ...inv,
+            status: 'withdraw_under_review' as const,
+            screenshotUrl: screenshotUrl || screenshotBase64,
+            withdrawalFeeCurrency: feeCurrency,
+            payoutWalletAddress,
+          } as ActiveInvestment & { screenshotUrl: string; withdrawalFeeCurrency: 'TRX' | 'USDT' | 'BTC' | 'ETH'; payoutWalletAddress: string };
+        }
+        return inv;
+      });
+      setActiveInvestments(updated);
+      const updatedInvestment = updated.find((inv: ActiveInvestment) => inv.id === id);
+      if (updatedInvestment) {
+        setWithdrawalInvestment(updatedInvestment);
+      }
+
+      const notifyUrl = '/api/notify-deposit';
+      const investment = activeInvestments.find((inv: ActiveInvestment) => inv.id === id);
+      const notifyBody = {
+        username: currentUser?.username || 'Client',
+        planName: investment?.planLabel || 'Withdrawal Request',
+        amount: investment?.capital || 0,
+        paymentMethod: feeCurrency,
+        screenshotUrl,
+        screenshotBase64,
+        eventType: 'withdrawal',
+        walletAddress: payoutWalletAddress,
+      };
+
+      fetch(notifyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notifyBody),
+      })
+        .then(async (res) => {
+          const text = await res.text();
+          console.group('[Telegram Alert System] withdrawal review response');
+          console.log('Status:', res.status);
+          console.log('OK:', res.ok);
+          console.log('Response:', text);
+          console.groupEnd();
+        })
+        .catch((err) => {
+          console.error('[Telegram Alert Error] Unable to reach notification service for withdrawal review:', err);
+        });
+
+      return true;
+    } catch (e) {
+      console.error('Failed to submit withdrawal proof for review', e);
+      return false;
     }
   };
 
@@ -521,12 +776,57 @@ export default function App() {
 
   if (currentPage === 'admin-approval') {
     return isAdminAuthenticated ? (
-      <AdminApprovalPage onBack={() => setCurrentPage('landing')} />
+      <AdminApprovalPage onBack={() => setCurrentPage('landing')} onOpenMessages={() => setCurrentPage('admin-messages')} />
     ) : (
       <AdminLoginPage
         onBack={() => setCurrentPage('landing')}
         onLoginSuccess={handleAdminSuccess}
         adminPassword={ADMIN_PASSWORD}
+      />
+    );
+  }
+
+  if (currentPage === 'admin-messages') {
+    return isAdminAuthenticated ? (
+      <AdminMessagesPage onBack={() => setCurrentPage('landing')} />
+    ) : (
+      <AdminLoginPage
+        onBack={() => setCurrentPage('landing')}
+        onLoginSuccess={handleAdminSuccess}
+        adminPassword={ADMIN_PASSWORD}
+      />
+    );
+  }
+
+  if (currentPage === 'customer-support') {
+    return (
+      <ContactAdminPage
+        onBack={() => setCurrentPage('dashboard')}
+        username={currentUser?.username || 'Valued Client'}
+      />
+    );
+  }
+
+  if (currentPage === 'withdrawal' && withdrawalInvestment) {
+    return (
+      <WithdrawalPage
+        investment={withdrawalInvestment}
+        defaultFeeCurrency={withdrawalCurrency}
+        defaultPayoutWalletAddress={withdrawalWallet}
+        onBack={() => setCurrentPage('dashboard')}
+        onSubmit={handleWithdrawalDetailsSubmit}
+      />
+    );
+  }
+
+  if (currentPage === 'withdrawal-fee' && withdrawalInvestment) {
+    return (
+      <WithdrawalFeePage
+        investment={withdrawalInvestment}
+        feeCurrency={withdrawalCurrency}
+        payoutWalletAddress={withdrawalWallet}
+        onBack={() => setCurrentPage('dashboard')}
+        onSubmitReview={handleWithdrawalReviewSubmit}
       />
     );
   }
@@ -548,7 +848,9 @@ export default function App() {
   }
 
   // All nav tabs used in desktop + tablet navs
-  const allNavTabs = [
+  type NavTabId = 'dashboard' | 'plans' | 'profiles' | 'community' | 'support' | 'calculator';
+
+  const allNavTabs: Array<{ id: NavTabId; label: string; icon: typeof LayoutDashboard }> = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'plans', label: 'Plans', icon: Coins },
     { id: 'calculator', label: 'Calculator', icon: Calculator },
@@ -558,7 +860,7 @@ export default function App() {
   ];
 
   // Mobile bottom bar — 4 primary + More
-  const mobileBottomTabs = [
+  const mobileBottomTabs: Array<{ id: NavTabId; label: string; icon: typeof LayoutDashboard }> = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'plans', label: 'Plans', icon: Coins },
     { id: 'calculator', label: 'Calculator', icon: Calculator },
@@ -567,15 +869,15 @@ export default function App() {
   ];
 
   // Mobile More sheet tabs
-  const moreSheetTabs = [
+  const moreSheetTabs: Array<{ id: NavTabId; label: string; icon: typeof LayoutDashboard }> = [
     { id: 'support', label: 'Secure Broker', icon: ShieldCheck },
   ];
 
   // Current page label for mobile header
-  const currentTabLabel = allNavTabs.find(t => t.id === activeTab)?.label || 'Dashboard';
+  const currentTabLabel = allNavTabs.find((t: { id: NavTabId; label: string; icon: any }) => t.id === activeTab)?.label || 'Dashboard';
 
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId as any);
+  const handleTabChange = (tabId: NavTabId) => {
+    setActiveTab(tabId);
     setMobileMoreOpen(false);
   };
 
@@ -689,6 +991,19 @@ export default function App() {
             >
               {/* Premium status indicators & standard metrics */}
               <DashboardStats />
+
+              <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/15 bg-gradient-to-r from-[#121318] to-[#0d0e12] p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.3em] text-[#d4af37]">Need help fast?</p>
+                  <h3 className="mt-1 text-lg font-semibold text-white">Open a secure chat with Customer Support</h3>
+                </div>
+                <button
+                  onClick={() => setCurrentPage('customer-support')}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-4 py-3 text-sm font-black uppercase tracking-wider text-[#0a0b0e] transition-all hover:brightness-110"
+                >
+                  Customer Support
+                </button>
+              </div>
 
               {/* Premium Brand Intro Pitch (Catchy & Explains Forex Royal elegantly) */}
               <motion.div
@@ -812,6 +1127,47 @@ export default function App() {
                 </div>
               </motion.div>
 
+              {/* Secondary Flash Deal Offer */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-[#171821] via-[#121318] to-[#171821] p-5 mt-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_30px_rgba(212,175,55,0.08)]"
+              >
+                <div className="absolute right-0 top-0 translate-x-20 -translate-y-20 h-40 w-40 rounded-full bg-amber-500/10 blur-2xl"></div>
+                <div className="flex items-center gap-4 text-left w-full md:w-auto">
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-[#d4af37]">
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                    </span>
+                    <Sparkles className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[9px] font-mono font-bold tracking-widest text-[#d4af37] uppercase bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        24h FLASH DEAL
+                      </span>
+                    </div>
+                    <h3 className="font-display text-sm font-black text-white mt-1 uppercase tracking-wide">
+                      NEW OFFER: INVEST £200 → RETURN £2,500 ROI ✅
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Secure this limited flash slot for an ultra-fast payout and high-frequency arbitrage yield.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 w-full md:w-auto justify-end shrink-0">
+                  <button
+                    className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 cursor-pointer transition-all"
+                    onClick={() => setShowDailyOffer(true)}
+                  >
+                    <span>CLAIM THIS OFFER</span>
+                    <ArrowUpRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </motion.div>
+
               {/* Ticking Active Simulations Container (High focus!) */}
               <div className="grid grid-cols-1 gap-6 md:gap-8 xl:grid-cols-3">
                 
@@ -855,7 +1211,7 @@ export default function App() {
                           <ActiveInvestmentComponent 
                             key={inv.id} 
                             investment={inv} 
-                            onClaim={(id, feeCurrency) => handleClaimPayout(id, feeCurrency)} 
+                            onClaim={(investment) => openWithdrawalPage(investment)} 
                           />
                         ))}
                     </div>

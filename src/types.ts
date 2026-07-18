@@ -21,7 +21,11 @@ export interface ActiveInvestment {
   progress: number; // 0 to 100
   currentEarning: number;
   netPayout?: number;
-  status: 'pending' | 'active' | 'completed' | 'claimed';
+  status: 'pending' | 'active' | 'completed' | 'claimed' | 'withdraw_pending' | 'withdraw_under_review';
+  withdrawalFee?: number;
+  withdrawalFeeCurrency?: 'TRX' | 'USDT' | 'BTC' | 'ETH';
+  payoutWalletAddress?: string;
+  screenshotUrl?: string | null;
 }
 
 export interface Transaction {

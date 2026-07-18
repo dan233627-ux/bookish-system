@@ -4,6 +4,7 @@ import { supabase } from '../utils/supabase/client';
 
 interface AdminApprovalPageProps {
   onBack: () => void;
+  onOpenMessages?: () => void;
 }
 
 interface PendingInvestmentRecord {
@@ -20,7 +21,7 @@ interface PendingInvestmentRecord {
   start_date?: string;
 }
 
-export default function AdminApprovalPage({ onBack }: AdminApprovalPageProps) {
+export default function AdminApprovalPage({ onBack, onOpenMessages }: AdminApprovalPageProps) {
   const [pendingInvestments, setPendingInvestments] = useState<PendingInvestmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function AdminApprovalPage({ onBack }: AdminApprovalPageProps) {
       const { data, error } = await supabase
         .from('investments')
         .select('*')
-        .eq('status', 'pending')
+        .in('status', ['pending', 'withdraw_under_review'])
         .order('start_date', { ascending: false });
 
       if (error) throw error;
@@ -50,7 +51,7 @@ export default function AdminApprovalPage({ onBack }: AdminApprovalPageProps) {
     void loadPendingInvestments();
   }, []);
 
-  const updateStatus = async (id: string, nextStatus: 'active' | 'declined') => {
+  const updateStatus = async (id: string, nextStatus: 'active' | 'declined' | 'claimed') => {
     setProcessingId(id);
     setNotice(null);
 
@@ -91,17 +92,27 @@ export default function AdminApprovalPage({ onBack }: AdminApprovalPageProps) {
                 Admin approval queue
               </div>
               <h1 className="font-display text-2xl font-black uppercase tracking-wide text-white">
-                VERIFY OR DECLINE PENDING DEPOSITS
+                VERIFY OR DECLINE PENDING VERIFICATIONS
               </h1>
               <p className="mt-2 text-sm text-gray-400">
-                Review each pending transaction, verify the payment, or decline it if the evidence is not valid.
+                Review each pending deposit or withdrawal proof, verify the payment, or decline it if the evidence is not valid.
               </p>
             </div>
-            <div className="rounded-2xl border border-amber-500/10 bg-[#121318]/70 px-4 py-3 text-sm text-gray-300">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl border border-amber-500/10 bg-[#121318]/70 px-4 py-3 text-sm text-gray-300">
               <span className="block text-[9px] font-mono font-bold uppercase tracking-[0.3em] text-gray-500">
                 Pending count
               </span>
               <span className="text-xl font-black text-[#d4af37]">{pendingInvestments.length}</span>
+              </div>
+              {onOpenMessages && (
+                <button
+                  onClick={onOpenMessages}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/15 bg-[#121318] px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-[#171821] transition-all"
+                >
+                  Open Inbox
+                </button>
+              )}
             </div>
           </div>
 
@@ -136,7 +147,7 @@ export default function AdminApprovalPage({ onBack }: AdminApprovalPageProps) {
                       <h3 className="mt-1 text-lg font-bold text-white">{item.category?.toUpperCase() || 'INVESTMENT'}</h3>
                     </div>
                     <div className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-400">
-                      Pending
+                      {item.status === 'withdraw_under_review' ? 'WITHDRAWAL REVIEW' : 'PENDING'}
                     </div>
                   </div>
 
