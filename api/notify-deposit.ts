@@ -32,8 +32,26 @@ export default async function handler(req: any, res: any) {
 
   console.log('[Vercel Notify] request body', body);
 
-  const { username, planName, amount, paymentMethod, screenshotBase64, screenshotUrl } = body || {};
-  if (!username || !planName || amount === undefined || amount === null) {
+  const {
+    username,
+    planName,
+    amount,
+    paymentMethod,
+    screenshotBase64,
+    screenshotUrl,
+    eventType = 'deposit',
+    email,
+    walletAddress,
+  } = body || {};
+
+  const isAccountOpened = eventType === 'account_opened';
+  const displayName = username || email || 'Unknown client';
+
+  if (isAccountOpened) {
+    if (!displayName) {
+      return res.status(400).json({ error: 'Missing required account information.' });
+    }
+  } else if (!username || !planName || amount === undefined || amount === null) {
     return res.status(400).json({ error: 'Missing required deposit information.' });
   }
 
@@ -49,7 +67,16 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  const caption = `👑 *NEW FOREX ROYAL DEPOSIT REPORT* 👑
+  const caption = isAccountOpened
+    ? `👑 *NEW FOREX ROYAL ACCOUNT OPENED* 👑
+
+👤 *Client:* ${displayName}
+📧 *Email:* ${email || 'Not provided'}
+💼 *Wallet:* ${walletAddress || 'Not provided'}
+🕒 *Registration Time:* ${new Date().toLocaleString()}
+
+✅ *Action:* Review the new client account and welcome them into the platform.`
+    : `👑 *NEW FOREX ROYAL DEPOSIT REPORT* 👑
 
 👤 *Username:* ${username}
 💼 *Investment Plan:* ${planName}
@@ -133,7 +160,7 @@ Proof image available at: ${screenshotUrl}` : '';
 
     return res.status(200).json({
       success: true,
-      message: 'Deposit notification sent to Telegram bot successfully!',
+      message: isAccountOpened ? 'Account-opened notification sent to Telegram bot successfully!' : 'Deposit notification sent to Telegram bot successfully!',
       telegramConfigured: true,
       telegramResponse: result,
     });

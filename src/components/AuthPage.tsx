@@ -22,6 +22,25 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
     return /^0x[a-fA-F0-9]{40}$/.test(address);
   };
 
+  const sendAccountOpenedTelegramAlert = async (displayName: string, email: string) => {
+    try {
+      await fetch('/api/notify-deposit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          eventType: 'account_opened',
+          username: displayName,
+          email,
+          walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e2d',
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to send account-opened Telegram alert', err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -86,6 +105,9 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
           if (profileError) {
             console.error('Failed to create profile:', profileError);
           }
+
+          void sendAccountOpenedTelegramAlert(username, email);
+
           // Save credentials locally for auto-fill on next visit
           localStorage.setItem('saved_username', username);
           localStorage.setItem('saved_password', password);

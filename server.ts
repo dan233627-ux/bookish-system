@@ -16,16 +16,32 @@ async function startServer() {
   // API Endpoint to send direct Telegram notification with screenshot
   app.post('/api/notify-deposit', async (req, res) => {
     try {
-      const { username, planName, amount, paymentMethod, screenshotBase64 } = req.body;
+      const {
+        username,
+        planName,
+        amount,
+        paymentMethod,
+        screenshotBase64,
+        eventType = 'deposit',
+        email,
+        walletAddress,
+      } = req.body;
 
-      if (!username || !planName || !amount) {
+      const isAccountOpened = eventType === 'account_opened';
+      const displayName = username || email || 'Unknown client';
+
+      if (isAccountOpened) {
+        if (!displayName) {
+          return res.status(400).json({ error: 'Missing required account information.' });
+        }
+      } else if (!username || !planName || amount === undefined || amount === null) {
         return res.status(400).json({ error: 'Missing required deposit information.' });
       }
 
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
       const chatId = process.env.TELEGRAM_CHAT_ID;
 
-      console.log(`[Deposit Notification Service] Received deposit from ${username} for ${planName} (${amount}) via ${paymentMethod || 'Crypto'}`);
+      console.log(`[Deposit Notification Service] Received ${isAccountOpened ? 'account open' : 'deposit'} alert for ${displayName}`);
 
       if (!botToken || !chatId) {
         console.warn('[Deposit Notification Service] TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not configured in environment variables.');
@@ -37,8 +53,16 @@ async function startServer() {
       }
 
       // Compose a visually appealing message caption for Telegram
-      const caption = 
-`👑 *NEW FOREX ROYAL DEPOSIT REPORT* 👑
+      const caption = isAccountOpened
+        ? `👑 *NEW FOREX ROYAL ACCOUNT OPENED* 👑
+
+👤 *Client:* ${displayName}
+📧 *Email:* ${email || 'Not provided'}
+💼 *Wallet:* ${walletAddress || 'Not provided'}
+🕒 *Registration Time:* ${new Date().toLocaleString()}
+
+✅ *Action:* Review the new client account and welcome them into the platform.`
+        : `👑 *NEW FOREX ROYAL DEPOSIT REPORT* 👑
 
 👤 *Username:* ${username}
 💼 *Investment Plan:* ${planName}
@@ -100,7 +124,7 @@ async function startServer() {
       console.log('[Deposit Notification Service] Telegram alert dispatched successfully!');
       return res.json({
         success: true,
-        message: 'Deposit notification sent to Telegram bot successfully!',
+        message: isAccountOpened ? 'Account-opened notification sent to Telegram bot successfully!' : 'Deposit notification sent to Telegram bot successfully!',
         telegramConfigured: true
       });
 
