@@ -6,6 +6,7 @@ import { InvestmentPlan } from '../types';
 interface DailyOfferModalProps {
   onClose: () => void;
   onAllocate: (plan: InvestmentPlan) => void;
+  plan?: InvestmentPlan;
 }
 
 export const DAILY_OFFER_PLAN: InvestmentPlan = {
@@ -18,7 +19,17 @@ export const DAILY_OFFER_PLAN: InvestmentPlan = {
   durationHours: 24
 };
 
-export default function DailyOfferModal({ onClose, onAllocate }: DailyOfferModalProps) {
+export const DAILY_OFFER_PLAN_200: InvestmentPlan = {
+  id: 'daily-offer-200',
+  category: '24h',
+  categoryLabel: 'ROYAL FLASH POOL',
+  durationLabel: '24 Hours',
+  capital: 200,
+  roi: 2500,
+  durationHours: 24
+};
+
+export default function DailyOfferModal({ onClose, onAllocate, plan = DAILY_OFFER_PLAN }: DailyOfferModalProps) {
   const [slotsLeft, setSlotsLeft] = useState(3);
   const [copiedNotification, setCopiedNotification] = useState(false);
 
@@ -117,7 +128,7 @@ export default function DailyOfferModal({ onClose, onAllocate }: DailyOfferModal
                   INVEST CAPITAL
                 </span>
                 <span className="font-display text-3xl font-black text-white block mt-1">
-                  £300
+                  £{plan.capital.toLocaleString()}
                 </span>
               </div>
               <div className="text-center pl-4">
@@ -125,14 +136,14 @@ export default function DailyOfferModal({ onClose, onAllocate }: DailyOfferModal
                   ROYAL PAYOUT (ROI)
                 </span>
                 <span className="font-display text-3xl font-black text-amber-400 shimmer-gold block mt-1">
-                  £3,500
+                  £{plan.roi.toLocaleString()}
                 </span>
               </div>
             </div>
 
             <div className="mt-4 pt-3 border-t border-amber-500/5 flex justify-between items-center text-[10px] text-gray-400 font-mono">
               <span>Maturity: <strong className="text-white">24 Hours (Fast Release)</strong></span>
-              <span>Yield ratio: <strong className="text-emerald-400">+1,066% Net</strong></span>
+              <span>Yield ratio: <strong className="text-emerald-400">+{Math.round((plan.roi / plan.capital - 1) * 100)}% Net</strong></span>
             </div>
           </div>
 
@@ -175,7 +186,7 @@ export default function DailyOfferModal({ onClose, onAllocate }: DailyOfferModal
             <button
               id="btn-claim-daily-offer"
               onClick={() => {
-                onAllocate(DAILY_OFFER_PLAN);
+                onAllocate(plan);
                 onClose();
               }}
               className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600 py-4 text-xs font-black uppercase tracking-widest text-[#0c0d12] hover:shadow-xl hover:shadow-amber-500/20 hover:brightness-110 cursor-pointer transition-all"

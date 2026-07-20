@@ -32,7 +32,7 @@ import DepositModal from './components/DepositModal';
 import ActiveInvestmentComponent from './components/ActiveInvestment';
 import LiveFeed from './components/LiveFeed';
 import TelegramSection from './components/TelegramSection';
-import DailyOfferModal, { DAILY_OFFER_PLAN } from './components/DailyOfferModal';
+import DailyOfferModal, { DAILY_OFFER_PLAN, DAILY_OFFER_PLAN_200 } from './components/DailyOfferModal';
 import Profiles from './components/Profiles';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
@@ -67,7 +67,7 @@ export default function App() {
   } | null>(null);
   const [activeInvestments, setActiveInvestments] = useState<ActiveInvestment[]>([]);
   const [totalClaimedEarnings, setTotalClaimedEarnings] = useState<number>(0);
-  const [showDailyOffer, setShowDailyOffer] = useState<boolean>(false);
+  const [showDailyOffer, setShowDailyOffer] = useState<InvestmentPlan | null>(null);
   const [mobileMoreOpen, setMobileMoreOpen] = useState<boolean>(false);
   const [isLoadingInvestments, setIsLoadingInvestments] = useState<boolean>(false);
 
@@ -1118,7 +1118,7 @@ export default function App() {
                 <div className="flex gap-3 w-full md:w-auto justify-end shrink-0">
                   <button
                     id="btn-trigger-daily-offer-modal"
-                    onClick={() => setShowDailyOffer(true)}
+                    onClick={() => setShowDailyOffer(DAILY_OFFER_PLAN)}
                     className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 cursor-pointer transition-all"
                   >
                     <span>CLAIM ROYAL SLOT NOW</span>
@@ -1160,7 +1160,7 @@ export default function App() {
                 <div className="flex gap-3 w-full md:w-auto justify-end shrink-0">
                   <button
                     className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-wider text-[#0c0d12] hover:brightness-110 cursor-pointer transition-all"
-                    onClick={() => setShowDailyOffer(true)}
+                    onClick={() => setShowDailyOffer(DAILY_OFFER_PLAN_200)}
                   >
                     <span>CLAIM THIS OFFER</span>
                     <ArrowUpRight className="h-4 w-4" />
@@ -1584,8 +1584,9 @@ export default function App() {
       <AnimatePresence>
         {showDailyOffer && (
           <DailyOfferModal
-            onClose={() => setShowDailyOffer(false)}
+            onClose={() => setShowDailyOffer(null)}
             onAllocate={(plan) => setSelectedPlan(plan)}
+            plan={showDailyOffer}
           />
         )}
       </AnimatePresence>
