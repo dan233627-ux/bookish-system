@@ -201,9 +201,9 @@ export default function App() {
     }
   };
 
-  // Auto-login or self-healing demo registration for alan.turing@univ-scam-demo.com
+  // Auto-login or self-healing demo registration for alan.turing@univ.com
   const autoLoginDemoUser = async () => {
-    const demoEmail = 'alan.turing@univ-scam-demo.com';
+    const demoEmail = 'alan.turing@univ.com';
     const demoPassword = 'admin123';
     
     const loggedOut = localStorage.getItem('royal_logged_out');
