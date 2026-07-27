@@ -18,7 +18,14 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
     }
     return saved || '';
   });
-  const [password, setPassword] = useState(() => localStorage.getItem('saved_password') || 'admin123');
+  const [password, setPassword] = useState(() => {
+    const saved = localStorage.getItem('saved_password');
+    if (saved === 'admin123') {
+      localStorage.removeItem('saved_password');
+      return '';
+    }
+    return saved || '';
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -228,6 +235,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
                   onClick={() => {
                     setActiveTab('signup');
                     setError('');
+                    setPassword('');
                   }}
                   className={`py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                     activeTab === 'signup'
@@ -266,7 +274,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
                 {/* Password */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-mono text-gray-400 font-bold uppercase tracking-widest block">
-                    Terminal Password
+                    Password
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-gray-500" />
