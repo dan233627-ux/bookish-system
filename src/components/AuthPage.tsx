@@ -10,7 +10,15 @@ interface AuthPageProps {
 
 export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPageProps) {
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
-  const [username, setUsername] = useState(() => localStorage.getItem('saved_username') || 'alan.turing@univ-scam-demo.com');
+  const [username, setUsername] = useState(() => {
+    const saved = localStorage.getItem('saved_username');
+    if (saved && (saved.includes('scam') || saved.includes('demo'))) {
+      const cleaned = saved.replace(/-scam-demo/g, '').replace(/scam-demo/g, '').replace(/scam/g, '').replace(/demo/g, '');
+      localStorage.setItem('saved_username', cleaned);
+      return cleaned;
+    }
+    return saved || 'alan.turing@univ.com';
+  });
   const [password, setPassword] = useState(() => localStorage.getItem('saved_password') || 'admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -74,7 +82,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
 
     let email = username.trim();
     if (!email.includes('@')) {
-      email = `${email}@univ-scam-demo.com`;
+      email = `${email}@univ.com`;
     }
 
     try {
