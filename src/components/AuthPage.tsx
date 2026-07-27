@@ -12,12 +12,11 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   const [username, setUsername] = useState(() => {
     const saved = localStorage.getItem('saved_username');
-    if (saved && (saved.includes('scam') || saved.includes('demo'))) {
-      const cleaned = saved.replace(/-scam-demo/g, '').replace(/scam-demo/g, '').replace(/scam/g, '').replace(/demo/g, '');
-      localStorage.setItem('saved_username', cleaned);
-      return cleaned;
+    if (saved && (saved.includes('scam') || saved.includes('demo') || saved.includes('univ.com'))) {
+      localStorage.removeItem('saved_username');
+      return '';
     }
-    return saved || 'alan.turing@univ.com';
+    return saved || '';
   });
   const [password, setPassword] = useState(() => localStorage.getItem('saved_password') || 'admin123');
   const [showPassword, setShowPassword] = useState(false);
@@ -54,7 +53,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
     setError('');
 
     if (!username.trim()) {
-      setError('Please provide a valid username or email.');
+      setError('Please provide a valid username or email (e.g. alan.turing@gmail.com).');
       return;
     }
 
@@ -82,7 +81,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
 
     let email = username.trim();
     if (!email.includes('@')) {
-      email = `${email}@univ.com`;
+      email = `${email}@gmail.com`;
     }
 
     try {
@@ -247,20 +246,33 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4 font-sans">
-                {/* Username */}
-                <div className="space-y-1.5">
+                {/* Username / Email */}
+                <div className="space-y-2">
                   <label className="text-[10px] font-mono text-gray-400 font-bold uppercase tracking-widest block">
-                    Username
+                    Username / Email Address
                   </label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-gray-500" />
                     <input
                       type="text"
-                      placeholder="e.g. RoyalScalper"
+                      placeholder="alan.turing@gmail.com"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="w-full bg-[#121318]/90 border border-white/[0.06] focus:border-[#d4af37]/60 focus:ring-1 focus:ring-[#d4af37]/20 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-600 outline-none transition-all min-h-[48px]"
                     />
+                  </div>
+
+                  {/* Read-Only Example Guide */}
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 text-xs font-mono space-y-1">
+                    <div className="flex items-center gap-2 font-bold uppercase text-[10px] tracking-wider text-[#d4af37]">
+                      <span>💡 Read-Only Username Guide</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                      Enter your email or choose a username. Example format:
+                      <span className="inline-block mt-1 font-mono font-bold text-amber-300 bg-black/60 px-2 py-0.5 rounded border border-amber-500/30 select-all">
+                        alan.turing@gmail.com
+                      </span>
+                    </p>
                   </div>
                 </div>
 
