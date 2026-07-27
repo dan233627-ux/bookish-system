@@ -247,7 +247,7 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
 
               <form onSubmit={handleSubmit} className="space-y-4 font-sans">
                 {/* Username / Email */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-mono text-gray-400 font-bold uppercase tracking-widest block">
                     Username / Email Address
                   </label>
@@ -260,19 +260,6 @@ export default function AuthPage({ onAuthSuccess, onBackToLanding }: AuthPagePro
                       onChange={(e) => setUsername(e.target.value)}
                       className="w-full bg-[#121318]/90 border border-white/[0.06] focus:border-[#d4af37]/60 focus:ring-1 focus:ring-[#d4af37]/20 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-600 outline-none transition-all min-h-[48px]"
                     />
-                  </div>
-
-                  {/* Read-Only Example Guide */}
-                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 text-xs font-mono space-y-1">
-                    <div className="flex items-center gap-2 font-bold uppercase text-[10px] tracking-wider text-[#d4af37]">
-                      <span>💡 Read-Only Username Guide</span>
-                    </div>
-                    <p className="text-[11px] text-gray-400 leading-relaxed">
-                      Enter your email or choose a username. Example format:
-                      <span className="inline-block mt-1 font-mono font-bold text-amber-300 bg-black/60 px-2 py-0.5 rounded border border-amber-500/30 select-all">
-                        alan.turing@gmail.com
-                      </span>
-                    </p>
                   </div>
                 </div>
 
